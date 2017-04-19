@@ -69,6 +69,7 @@ class RoleList(object):
             json_output.append(
                 {
                     "role": role.name,
+                    "inherits": role.inherits,
                     "secret": role.secret
                 }
             )
@@ -110,7 +111,7 @@ class RoleList(object):
         """ Some roles has heredity, we have to copy some resources to ensure access """
 
         for role in self.list:
-            for irole in role.inherits:
+            for irole in self.get_complete_inheritance(role, []):
                 oirole = self.get_role_by_name(irole) # irole object (role_src)
                 self.duplicate_resources(role, oirole) # role = role_dest, oirole = role_src
                         
@@ -130,6 +131,40 @@ class RoleList(object):
 
             if rcs == False:
                 role_dest.secret.append(role_src_resource)
+
+    def get_complete_inheritance(self, role: Role, ilist):
+        """ Computes complete inheritance """
+
+        new = False
+
+        for irole in role.inherits:
+            if not (irole in ilist):
+                new = True
+                ilist.append(irole)
+
+            if new == True:
+                new = False
+                ilist = self.get_complete_inheritance(self.get_role_by_name(irole), ilist)
+
+        return ilist
+
+    def role_dependancy_check(self):
+        """ Check role dependency (find unknown role names) """
+
+        roles = []
+        inher = []
+
+        for role in self.list:
+            roles.append(role.name)
+
+        for role in self.list:
+            inher.extend(role.inherits)
+
+        for i in inher:
+            if not (i in roles):
+                return i
+
+        return None
 
     def get_role_by_name(self, role_name):
         """ Return role by role name """

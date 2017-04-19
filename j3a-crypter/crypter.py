@@ -138,11 +138,20 @@ class Crypter:
         - we have to generate new encrypted element tag and replace this original content by this tag
 
         Second step:
-        - we have to encrypt "secret" of each ACL resource (list item) which contains cryptokeys of crypted web pages
+        - we have to encrypt "secret" of each ACL resource (list item) which contains cryptokeys of encrypted web pages
         - after that we have to save ACL to file and store new generated cryptokeys in some variable
 
         Third step:
-        - 
+        - we have to encrypt "secret" of each role which contains cryptokeys of encrypted ACL reources
+        - after that we have to save roles to file and store new generated cryptokeys in some variable
+
+        Fourth step:
+        - TODO...
+
+        Fifth step:
+        - we have to create version file. Why? Because of cache. We caching some files as config, acl or roles, so we have to
+          know when reload these files
+        - version file contains olny time constant, which describes last modification of resources and config files
         """
 
         # Algorithm compatibility check
@@ -155,6 +164,12 @@ class Crypter:
         if not self.algorithm_config_check():
             print("Error: Some requested algorithm has not been specified. Check 'config.json' for missing algorithm.")
             self.print_algorithm_support()
+            exit(100)
+
+        # Roles dependancy check
+        dcheck = self.roles.role_dependancy_check()
+        if dcheck != None:
+            print("Error: Inheritance miss match! Role not found: " + dcheck)
             exit(100)
 
         # Resources directory check
@@ -173,17 +188,19 @@ class Crypter:
         # First step: Encrypt web pages or their parts and save crytpo keys and info in ACL
         for loc in self.web_pages:
             
+            error = False
+
             # At first try open as BOM, as a second try standard UTF-8
             web_page = self.try_open_as_utf8_bom(loc)
             if web_page == None:
                 web_page = self.try_open_as_utf8(loc)
 
             if web_page == None:
-                print("Warning: Can't process " + web_page)
-                self.web_pages.next()
-                continue
+                print("Warning: Can't process " + loc)
+                error = True
 
-            self.process_web_page(loc, web_page)
+            if error == False:
+                self.process_web_page(loc, web_page)
 
         # Second step: Generate ACL file
         acl_cryptokeys = []
@@ -375,7 +392,7 @@ class Crypter:
             
             # If 
             if entry.is_dir():
-                self.scan_directory(os.path.join(dir + '\\', entry.name).replace("\\", "/"))
+                files += self.scan_directory(os.path.join(dir + '\\', entry.name).replace("\\", "/"))
             
             # Search for html files
             if entry.name.endswith(".html") or entry.name.endswith(".htm"):
@@ -460,7 +477,12 @@ class Crypter:
          
     def save_wp(self, loc, page, divisions):
         """ Add encrypted element to page and save new content to file """
-        
+
+        if self.config.uri_boot in loc:
+            return
+        if self.config.denied_info_element in loc:
+            return
+
         wpcontent = page
         
         # Add boot script to page

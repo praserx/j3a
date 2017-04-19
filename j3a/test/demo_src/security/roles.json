@@ -1,0 +1,12 @@
+[
+    {
+        "role": "Zamestnanec"
+    },
+	{
+        "role": "Externista"
+    },
+    {
+        "role": "Administrator",
+        "inherits": [ "Zamestnanec", "Externista" ]
+    }
+]

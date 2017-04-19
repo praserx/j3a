@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en-US">
+   <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width" />
+      <title>Responsive Design website template</title>
+      <link rel="stylesheet" href="../css/components.css">
+      <link rel="stylesheet" href="../css/responsee.css">
+      <link rel="stylesheet" href="../owl-carousel/owl.carousel.css">
+      <link rel="stylesheet" href="../owl-carousel/owl.theme.css">
+      <!-- CUSTOM STYLE -->  
+      <link rel="stylesheet" href="../css/template-style.css">
+      <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,300,600,700,800&amp;subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+      <!--<script type="text/javascript" src="js/jquery-1.8.3.min.js"></script>-->
+      <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>  
+      <script type="text/javascript" src="../js/modernizr.js"></script>
+      <script type="text/javascript" src="../js/responsee.js"></script>   
+      <!--[if lt IE 9]>
+	      <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <script src="http://css3-mediaqueries-js.googlecode.com/svn/trunk/css3-mediaqueries.js"></script>
+      <![endif]-->
+   </head>
+    <body class="size-1140">
+        <header>
+            <nav>
+                <div class="line">
+                    <div class="top-nav">
+                        <div class="logo hide-l">
+                            <a href="../index.html">J3A <br />DEMO PAGE</a>
+                        </div>
+                        <p class="nav-text">Menu</p>
+                        <div class="top-nav s-12 l-5">
+                            <ul class="right top-ul chevron">
+                                <li><a href="../index.html">Hlavní</a></li>
+                                <li><a href="../informace.html">Informace</a></li>
+                                <li><a href="../verejnost.html">Veřejnost</a></li>
+                            </ul>
+                        </div>
+                        <ul class="s-12 l-2">
+                            <li class="logo hide-s hide-m"><a href="../index.html">J3A <br />DEMO PAGE</a></li>
+                        </ul>
+                        <div class="top-nav s-12 l-5">
+                            <ul class="top-ul chevron">
+                                <li><a href="../zamestnanci.html">Zaměstnanci</a></li>
+                                <li><a href="../externisti.html">Externisti</a></li>
+                                <li><a id="link-login" href="../login.html">Přihlásit se</a></li>
+                                <li><a id="link-logout" style="display: none">Odhlásit se</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <section>
+            <div id="head">
+                <div class="line">
+                    <h1>Přístup zamítnut</h1>
+                </div>
+            </div>
+            <div id="content">
+                <div class="line">
+                    <h2>K obsahu stránky, na kterou jste se pokusili přistoupit, nemáte dostatečná oprávnění!</h2>
+                </div>
+            </div>
+        </section>
+
+      <!-- FOOTER -->   
+      <footer>
+         <div class="line">
+            <div class="s-12 l-6">
+                <p>Copyright 2017, J3A Demo page</p>
+            </div>
+            <div class="s-12 l-6">
+               <p class="right">
+                  <a class="right" href="http://www.myresponsee.com" title="Responsee - lightweight responsive framework">Design and coding by Responsee Team</a>
+               </p>
+            </div>
+         </div>
+      </footer>
+       <!--
+    <script src="http://demo.localhost/build/j3a.js"></script>
+    -->
+    
+    <script src="https://praserx.github.io/j3a/demo/js/j3a.js"></script>
+    
+    <script type="text/javascript">
+        console.log("Boot script!!");
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // Handle page dynamic changes (quick action!)
+        //////////////////////////////////////////////////////////////////////////////////
+
+        $(document).ready(function () {
+            if (J3A.Logged() == true) {
+                $("#link-login").hide();
+                $("#link-logout").show();
+                // We can show some links or something (it can depends by user role too)
+
+                // Do not show login form if user is logged in - show his username!
+                var logPage = window.localStorage.getItem('loginPage');
+                if (logPage == "true") {
+                    window.localStorage.removeItem('loginPage');
+
+                    var contentHeader = '<div id="head"><div class="line"><h1>UĹľivatel</h1></div></div>';
+                    var contentInner = '<div id="content" class="center-align contact-page">PĹ™ihlĂˇĹˇenĂ˝ uĹľivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
+                    $("#login-section").html(contentHeader + contentInner);
+                }
+            }
+        });
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // J3A config, init and post processing
+        //////////////////////////////////////////////////////////////////////////////////
+
+        // J3A config url
+        //var configUrl = "http://demo.localhost/test/demo/config.json";    // localhost
+        var configUrl = "https://praserx.github.io/j3a/demo/config.json";
+        
+        // JA3 stuff
+        j3a = new J3A(true);    // New J3A
+        j3a.EnableDevMode();    // Enable developer mode
+
+        // Run initialization
+        j3a.Init(configUrl).then(function () {
+            $(document).ready(function () {
+                // Run J3A page postprocessing
+                j3a.RunPostProcessing().then(function (result) {
+                    // Now everything is done! Do something else here!
+                });
+            });
+        }).catch(function (error) {
+            console.log(error);
+        });
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // Click events
+        //////////////////////////////////////////////////////////////////////////////////
+
+        // Login button
+        $("#login-form").on("submit", function (e) {
+            e.preventDefault();
+            j3a.Login($("#username").val(), $("#password").val()).then(function (result) {
+                window.location.href = j3a.GetBaseUrl(); // Now redirect to main page!
+            }, function (err) {
+                console.log(err);
+                $("#login-failed").show();
+            });
+        });
+
+        // Login button
+        $("#link-logout").click(function () {
+            j3a.PartialLogout();
+            window.location.href = j3a.GetBaseUrl();
+        });
+    </script>
+</body>
+</html>

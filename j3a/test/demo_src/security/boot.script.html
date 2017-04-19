@@ -1,0 +1,76 @@
+    <!--
+    <script src="http://demo.localhost/build/j3a.js"></script>
+    -->
+    
+    <script src="https://praserx.github.io/j3a/demo/js/j3a.js"></script>
+    
+    <script type="text/javascript">
+        console.log("Boot script!!");
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // Handle page dynamic changes (quick action!)
+        //////////////////////////////////////////////////////////////////////////////////
+
+        $(document).ready(function () {
+            if (J3A.Logged() == true) {
+                $("#link-login").hide();
+                $("#link-logout").show();
+                // We can show some links or something (it can depends by user role too)
+
+                // Do not show login form if user is logged in - show his username!
+                var logPage = window.localStorage.getItem('loginPage');
+                if (logPage == "true") {
+                    window.localStorage.removeItem('loginPage');
+
+                    var contentHeader = '<div id="head"><div class="line"><h1>Uzivatel</h1></div></div>';
+                    var contentInner = '<div id="content" class="center-align contact-page">Prihlaseny uzivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
+                    $("#login-section").html(contentHeader + contentInner);
+                }
+            }
+        });
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // J3A config, init and post processing
+        //////////////////////////////////////////////////////////////////////////////////
+
+        // J3A config url
+        //var configUrl = "http://demo.localhost/test/demo/config.json";    // localhost
+        var configUrl = "https://praserx.github.io/j3a/demo/config.json";
+        
+        // JA3 stuff
+        j3a = new J3A(true);    // New J3A
+        j3a.EnableDevMode();    // Enable developer mode
+
+        // Run initialization
+        j3a.Init(configUrl).then(function () {
+            $(document).ready(function () {
+                // Run J3A page postprocessing
+                j3a.RunPostProcessing().then(function (result) {
+                    // Now everything is done! Do something else here!
+                });
+            });
+        }).catch(function (error) {
+            console.log(error);
+        });
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // Click events
+        //////////////////////////////////////////////////////////////////////////////////
+
+        // Login button
+        $("#login-form").on("submit", function (e) {
+            e.preventDefault();
+            j3a.Login($("#username").val(), $("#password").val()).then(function (result) {
+                window.location.href = j3a.GetBaseUrl(); // Now redirect to main page!
+            }, function (err) {
+                console.log(err);
+                $("#login-failed").show();
+            });
+        });
+
+        // Login button
+        $("#link-logout").click(function () {
+            j3a.PartialLogout();
+            window.location.href = j3a.GetBaseUrl();
+        });
+    </script>

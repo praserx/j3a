@@ -1,0 +1,6 @@
+﻿{
+    "username": "admin",
+    "key-type": "password",
+    "password": "foxtrot",
+    "roles": [ "Administrator" ]
+}

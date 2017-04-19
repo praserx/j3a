@@ -1,0 +1,24 @@
+{
+    "site-name": "J3A Demo",
+    "_uri-base": "http://demo.localhost/test/demo",
+    "uri-base": "https://praserx.github.io/j3a/demo",
+    "uri-boot": "security/boot.script.html",
+    "uri-acl": "security/acl.json",
+    "uri-roles": "security/roles.json",
+    "uri-version": "security/version.json",
+    "uri-users-dir": "security/users",
+    "uri-resources-dir": "security/resources",
+    "denied-info-element": "security/deniedWarning.html",
+    "denied-info-page": "security/denied.html",
+    "allow-cache": "true",
+    "auto-logout": "true",
+    "algorithms": {
+        "public-key-encryption": "RSA-OAEP",
+        "private-key-encryption": "AES-GCM",
+        "digest": "SHA-512",
+        "sign": "",
+        "key-derivation": "PBKDF2"
+    },
+    "perm-groups": [],
+    "file-perm-groups": []
+}

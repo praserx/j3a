@@ -7,15 +7,18 @@ import os
 import re
 import sys
 
-from rolelist import RoleList
+from file_worker import FileWorker
+from role_list import RoleList
 from user import User
-from enc_user import EncryptedUser
+from user_encrypted import EncryptedUser
 
 class UserList(object):
     """ UserList class defined in roles.json """
     
     def __init__(self, dir, rolelist: RoleList):
         """ Init UserList class """
+
+        self.fileworker = FileWorker()
         
         self.list = []
         self.encrypted_list = []
@@ -29,41 +32,13 @@ class UserList(object):
             if file.endswith(".json"):
                
                 # Try open file with unkown encoding (BOM is problem)
-                user = self.try_open_as_utf8(os.path.join(dir + '/', file).replace("\\", "/"))
-                if user == None:
-                   user = self.try_open_as_utf8_bom(os.path.join(dir + '/', file).replace("\\", "/"))
+                user = self.fileworker.open_json_file(os.path.join(dir + '/', file).replace("\\", "/"))
 
                 if user == None:
-                    print("Error: Can't open or parse '"+ file +"'. Please, check file format.")
+                    print("Error: Can't open or parse '"+ file +"'. Please, check file format or file encoding.")
                     exit(100)
 
                 self.add_user(user, rolelist)
-
-    def try_open_as_utf8(self, file):
-        """ Method tries open file in utf-8 encoding """
-        
-        try:
-            config_file = codecs.open(file, 'r', 'utf-8')
-            config_json = json.load(config_file)
-        except:
-            config_file.close()
-            return None
-        
-        config_file.close()
-        return config_json
-
-    def try_open_as_utf8_bom(self, file):
-        """ Method tries open file in utf-8 bom encoding """
-        
-        try:
-            config_file = codecs.open(file, 'r', 'utf-8-sig')
-            config_json = json.load(config_file)
-        except:
-            config_file.close()
-            return None
-        
-        config_file.close()
-        return config_json
 
     def add_user(self, user_json, rolelist: RoleList):
         """ Append Role object to list """
@@ -72,36 +47,24 @@ class UserList(object):
             print("Error: File format error. Missing 'username' in json file.")
             exit(100)
 
-        if not ("key-type" in user_json):
-            print("Error: File format error. Missing 'key-type' in json file.")
+        if ((not ("password" in user_json)) and (not ("certificate" in user_json))):
+            print("Error: File format error. Missing 'password' or 'certificate' in json file.")
             exit(100)
 
-        if "key-type" == "password":
-            if not ("password" in user_json):
-                print("Error: File format error. 'key-type' is 'password' but 'password' is missing.")
-                exit(100)
-
-        if "key-type" == "pem-cert":
-            if not ("pem-cert" in user_json):
-                print("Error: File format error. 'key-type' is 'pem-cert' but 'pem-cert' is missing.")
-                exit(100)
-
-        if "key-type" == "pem-cert":
-            print("Error: Sorry but public-key cryptography is not supported yet.")
-            exit(200)
+        if (("password" in user_json) and ("certificate" in user_json)):
+            print("Error: File format error. 'password' and 'certificate' found together. Choose only one auth type.")
+            exit(100)
         
         user_roles = []
 
-        for role in user_json["roles"]:
-            user_roles.append(rolelist.get_role_by_name(role))
+        if "roles" in user_json:
+            for role in user_json["roles"]:
+                user_roles.append(rolelist.get_role_by_name(role))
 
-        if user_json["key-type"] == "password":
-            self.list.append(User(user_json["username"], user_json["key-type"], user_json["password"], user_roles))
-        elif user_json["key-type"] == "pem-cert":
-            self.list.append(User(user_json["username"], user_json["key-type"], user_json["pem-cert"], user_roles))
-        else:
-            print("Error: Unknown error. Specified key type is not supported.")
-            exit(100)
+        if "password" in user_json:
+            self.list.append(User(user_json["username"], "password", user_json["password"], user_roles))
+        elif "certificate" in user_json:
+            self.list.append(User(user_json["username"], "certificate", user_json["certificate"], user_roles))
 
     def add_encrypted_user(self, enc_user):
         """ Add encrypted user to encrypted list """
@@ -160,13 +123,28 @@ class UserList(object):
             for role in user.roles:
                 roles.append(role.name)
 
-            json_output = {
-                "username": user.username,
-                "roles": roles,
-                "salt": user.salt,
-                "secret": user.secret,
-                "secret-algorithm": user.algorithm,
-                "key-type": self.get_user_by_name(user.username).key_type
-            }
+            json_output = None
+
+            if self.get_user_by_name(user.username).key_type == "password":
+                json_output = {
+                    "username": user.username,
+                    "roles": roles,
+                    "key-type": self.get_user_by_name(user.username).key_type,
+                    "key-salt": user.salt,
+                    "secret": user.secret,
+                    "secret-algorithm": user.algorithm,
+                }
+
+            elif self.get_user_by_name(user.username).key_type == "certificate":
+                json_output = {
+                    "username": user.username,
+                    "roles": roles,
+                    "key-type": self.get_user_by_name(user.username).key_type,
+                    "key-algorithm": user.key_algorithm,
+                    "key-secret": user.key_secret,
+                    "secret": user.secret,
+                    "secret-algorithm": user.algorithm,
+                }
+
             json.dump(json_output, file)
             file.close()

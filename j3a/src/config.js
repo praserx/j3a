@@ -205,14 +205,16 @@ Config.prototype.GetUriResources = function () {
 };
 
 /**
- * 
+ * @description Returns denied info page URI specified by username
+ * @returns {string}
  */
 Config.prototype.GetUriDeniedInfoPage = function () {
     return this.GetUriBase() + this.deniedInfoPage;
 }
 
 /**
- * 
+ * @description Returns denied info element URI specified by username
+ * @returns {string}
  */
 Config.prototype.GetUriDeniedInfoElement = function () {
     return this.GetUriBase() + this.deniedInfoElement;

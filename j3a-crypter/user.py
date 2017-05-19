@@ -8,7 +8,7 @@ class User(object):
         self.key_type = key_type
         if self.key_type == "password":
             self.password = key
-        elif self.key_type == "pem-cert":
-            self.pem_cert = key
+        elif self.key_type == "certificate":
+            self.certificate = key    # key is actually path to key
         self.roles = roles
         self.secret = secret

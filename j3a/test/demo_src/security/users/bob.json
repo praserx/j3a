@@ -1,6 +1,5 @@
 {
     "username": "bob",
-    "key-type": "password",
     "password": "pass",
     "roles": [ "Zamestnanec" ]
 }

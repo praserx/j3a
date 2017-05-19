@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // Database:
 // =========
-// Originaly, there was an IndexedDB API, but is API was quite unstable. So new
+// Originaly, there was an IndexedDB API, but API was quite unstable. So new
 // solution is simple usage of localStorage. It's fast, not asychronus and simple.
 ///////////////////////////////////////////////////////////////////////////////////
 

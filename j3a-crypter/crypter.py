@@ -7,29 +7,34 @@ import json
 import os
 import re
 import sys
+
+from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.hashes import Hash, SHA256, SHA512
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from pprint import pprint
 from shutil import copytree, rmtree
 
 from config import Config
 from acl import Acl
 from acl_resource import AclResource
-from rolelist import RoleList
 from role import Role
-from user_list import UserList
+from role_list import RoleList
 from user import User
-from enc_user import EncryptedUser
+from user_list import UserList
+from user_encrypted import EncryptedUser
+from file_worker import FileWorker
 
 class Crypter:
-    """  """
+    """ Main class providing cryptographic function and processing input directories """
 
     # Supported algorithms
     SUPP_ALGS = {
         "public-key-encryption": ["RSA-OAEP"],
-        "private-key-encryption": ["AES-CBC", "AES-CTR", "AES-GCM"],
+        "private-key-encryption": ["AES-GCM"],
         "digest": ["SHA-256", "SHA-512"],
         "sign": [],
         "key-derivation": ["PBKDF2"]
@@ -40,7 +45,7 @@ class Crypter:
         "public-key-encryption": "RSA-OAEP",
         "private-key-encryption": "AES-GCM",
         "digest": "SHA-512",
-        "sign": "",                 # TODO
+        "sign": "",
         "key-derivation": "PBKDF2"
     }
 
@@ -56,6 +61,8 @@ class Crypter:
 
         self.dir = None
         self.verbose = verbose
+
+        self.fileworker = FileWorker()
 
     def initialize(self, src, dest):
         """ Initialize destination directory """
@@ -81,10 +88,6 @@ class Crypter:
                 # Load config file
                 self.config = Config(os.path.join(dir + '\\', file), dir)
         
-                # Check config file for required values
-                if self.verbose:
-                    self.config.check_config()
-        
         # Check config instance
         if self.config == None:
             print("Error: Can not find 'config.json'. File has to be in web page root directory.")
@@ -92,6 +95,10 @@ class Crypter:
 
         if self.verbose:
             print("[ANALYZE] Config has been loaded")
+
+        # Check config file for required values
+        if self.verbose:
+            self.config.check_config("[ANALYZE][WARNING]")
 
         # Load acl file
         self.acl = Acl(os.path.join(dir + '/', self.config.uri_acl).replace("\\", "/"))
@@ -126,9 +133,9 @@ class Crypter:
                 print("[ANALYZE][PAGE] " + page)
 
     def process(self):
-        """ Analyze and encrypt web pages and their parts or encrypt files """
+        """ Analyze and encrypt web pages and their parts or encrypt files
 
-        """
+
         This is quite confusing, what we going to do? 
         
         It is not needed to describe Algorithm compatibility check and Resource directory check. What we have to describe is encryption of some files.
@@ -146,7 +153,8 @@ class Crypter:
         - after that we have to save roles to file and store new generated cryptokeys in some variable
 
         Fourth step:
-        - TODO...
+        - this is almost end of process
+        - we have to encrypt user confident data, so it is encrypted by specified pass or pub key certificate
 
         Fifth step:
         - we have to create version file. Why? Because of cache. We caching some files as config, acl or roles, so we have to
@@ -157,12 +165,6 @@ class Crypter:
         # Algorithm compatibility check
         if not self.algorithm_compatibility_check():
             print("Error: Some of specified algorithm is not supported.")
-            self.print_algorithm_support()
-            exit(100)
-
-        # Algorithm config check
-        if not self.algorithm_config_check():
-            print("Error: Some requested algorithm has not been specified. Check 'config.json' for missing algorithm.")
             self.print_algorithm_support()
             exit(100)
 
@@ -191,16 +193,14 @@ class Crypter:
             error = False
 
             # At first try open as BOM, as a second try standard UTF-8
-            web_page = self.try_open_as_utf8_bom(loc)
-            if web_page == None:
-                web_page = self.try_open_as_utf8(loc)
-
+            web_page = self.fileworker.open_file(loc)
+            
             if web_page == None:
                 print("Warning: Can't process " + loc)
                 error = True
 
             if error == False:
-                self.process_web_page(loc, web_page)
+                self.process_web_page(loc, web_page.read())
 
         # Second step: Generate ACL file
         acl_cryptokeys = []
@@ -241,17 +241,30 @@ class Crypter:
             self.users.add_rck_to_user(rck["role"], rck["secret"])
 
         for user in self.users.list:
-            # PBKDF2
-            #promise_pwd = self.pbkdf2(user.password)
-            #promise = self.encrypt(json.dumps(user.secret), promise_pwd["ciphertext"], user.key_type) # Users User secret encryption by password
-            #self.users.add_encrypted_user(EncryptedUser(user.username, user.roles, promise["ciphertext"], promise["secret"]["algorithm"], promise_pwd["salt"]))
+            if user.key_type == "password":
+                # PBKDF2
+                #promise_pwd = self.pbkdf2(user.password)
+                #promise = self.encrypt(json.dumps(user.secret), promise_pwd["ciphertext"], user.key_type) # Users User secret encryption by password
+                #self.users.add_encrypted_user(EncryptedUser(user.username, user.roles, promise["ciphertext"], promise["secret"]["algorithm"], promise_pwd["salt"]))
 
-            # Simple SHA-256
-            promise_pwd = self.sha256(user.password)
-            promise = self.encrypt(json.dumps(user.secret), promise_pwd, user.key_type) # Users User secret encryption by password
-            self.users.add_encrypted_user(EncryptedUser(user.username, user.roles, promise["ciphertext"], promise["secret"]["algorithm"], ""))
+                # Simple SHA-256
+                promise_pwd = self.sha256(user.password)
+                promise = self.encrypt(json.dumps(user.secret), promise_pwd, user.key_type) # Users User secret encryption by password
+                self.users.add_encrypted_user(EncryptedUser(user.username, user.roles, promise["ciphertext"], promise["secret"]["algorithm"], ""))
 
-            # If is added user without salt, so it means that user using public key type pwd (pem cert)
+            elif user.key_type == "certificate":
+                promise = self.encrypt(json.dumps(user.secret)) # Users User secret encryption by password
+                encryptedUser = EncryptedUser(user.username, user.roles, promise["ciphertext"], promise["secret"]["algorithm"], "")
+
+                promisersa = self.encrypt(promise["secret"]["key"], user.certificate, "certificate")
+                encryptedUser.key_secret = promisersa
+                encryptedUser.key_algorithm = { "name" : "RSA-OAEP" }
+
+                self.users.add_encrypted_user(encryptedUser)
+
+            else: 
+                print("[PROCESS][WARNING] Something goes wrong with user encryption. Be prepared for everything.")
+
 
         self.users.save()
 
@@ -267,28 +280,6 @@ class Crypter:
         if self.verbose:
             print("[PROCESS] Version file has been generated")
 
-    def try_open_as_utf8(self, file):
-        """ Method tries open file in utf-8 encoding """
-        
-        try:
-            web_page_file = codecs.open(file, 'r', 'utf-8')
-            web_page = web_page_file.read()
-        except:
-            return None
-        
-        return web_page
-
-    def try_open_as_utf8_bom(self, file):
-        """ Method tries open file in utf-8 bom encoding """
-        
-        try:
-            web_page_file = codecs.open(file, 'r', 'utf-8-sig')
-            web_page = web_page_file.read()
-        except:
-            return None
-        
-        return web_page
-
     def init_dest_dir(self, dest):
         """ Remove content of destination directory """
         rmtree(dest)
@@ -301,55 +292,40 @@ class Crypter:
         """ Check selected cryptography algorithms for availability. If ok return true, or else return false """
         
         # Private
-        if self.config.private_key_encryption == "":
+        if (self.config.private_key_encryption == "") or (self.config.private_key_encryption == None):
             self.config.private_key_encryption = self.DEFAULT_ALGS["private-key-encryption"]
         else:
             if not (self.config.private_key_encryption in self.SUPP_ALGS["private-key-encryption"]):
                 return False
         
         # Public
-        if self.config.public_key_encryption == "":
+        if (self.config.public_key_encryption == "") or (self.config.public_key_encryption == None):
             self.config.public_key_encryption = self.DEFAULT_ALGS["public-key-encryption"]
         else:
             if not (self.config.public_key_encryption in self.SUPP_ALGS["public-key-encryption"]):
                 return False
         
         # Digest
-        if self.config.digest == "":
+        if (self.config.digest == "") or (self.config.digest == None):
             self.config.digest = self.DEFAULT_ALGS["digest"]
         else:
             if not (self.config.digest in self.SUPP_ALGS["digest"]):
                 return False
         
         # Sign
-        if self.config.sign == "":
+        if (self.config.sign == "") or (self.config.sign == None):
             self.config.sign = self.DEFAULT_ALGS["sign"]
         else:
             if not (self.config.sign in self.SUPP_ALGS["sign"]):
                 return False
         
         # Key derivation
-        if self.config.key_derivation == "":
+        if (self.config.key_derivation == "") or (self.config.key_derivation == None):
             self.config.key_derivation = self.DEFAULT_ALGS["key-derivation"]
         else:
             if not (self.config.key_derivation in self.SUPP_ALGS["key-derivation"]):
                 return False
         
-        return True
-
-    def algorithm_config_check(self):
-        """ Check selected algorithm for availability """
-
-        key_types = self.users.get_key_types()
-
-        for key_type in self.users.get_key_types():
-            if key_type == "password":
-                if self.config.key_derivation == "":
-                    return False
-            elif key_type == "pem-cert":
-                if self.config.public_key_encryption == "":
-                    return False
-
         return True
 
     def print_algorithm_support(self):
@@ -532,17 +508,15 @@ class Crypter:
             cipher = self.config.private_key_encryption
         elif (key != None) and (key_type == "password"):
             cipher = self.config.private_key_encryption
-        else:
+        elif (key != None) and (key_type == "certificate"):
             cipher = self.config.public_key_encryption
+        else:
+            return None
 
         if cipher == "AES-GCM":
             return self.aes_gcm(plaintext, key)
-        elif cipher == "AES-CTR":
-            pass
-        elif cipher == "AES-CBC":
-            pass
         elif cipher == "RSA-OAEP":
-            pass
+            return self.rsa_oaep(plaintext, key)
 
         return None
 
@@ -575,6 +549,25 @@ class Crypter:
         }
 
         return {"secret": secret, "ciphertext": base64.b16encode(ciphertext).decode() + base64.b16encode(encryptor.tag).decode()}
+
+    def rsa_oaep(self, plaintext, key = None):
+        """ Perform RSA-OAEP encryption """
+
+        public_key = None
+
+        with open(os.path.join(self.dir + '/' + self.config.uri_users_dir + '/', key).replace("\\", "/"), "rb") as key_file:
+            public_key = serialization.load_pem_public_key(key_file.read(), backend=default_backend())
+
+        ciphertext = public_key.encrypt(
+            bytes(plaintext.encode('UTF-8')),
+            padding.OAEP(
+                mgf = padding.MGF1(algorithm = SHA256()),
+                algorithm = SHA256(),
+                label = None
+            )
+        )
+
+        return base64.b16encode(ciphertext).decode()
     
     def sha256(self, plaintext):
         """ Perform SHA-256 hash """

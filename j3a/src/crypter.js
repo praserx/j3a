@@ -72,6 +72,34 @@ Crypter.prototype.Decrypt = function (algorithm, key, secret) {
 };
 
 /**
+ * @description Provides key derivation
+ * @param {array} algorithm Key derivation algorithm
+ * @param {string} password Password
+ * @returns {Promise} Promise contains cryptoKey
+ */
+Crypter.prototype.DeriveKey = function (algortithm, password) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        resolve();
+    });
+}
+
+/**
+ * @description Provides hash function
+ * @param {array} algorithm Key derivation algorithm
+ * @param {string} plaintext Plaintext
+ * @returns {Promise} Promise contains cryptoKey
+ */
+Crypter.prototype.Hash = function (algortithm, plaintext) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        resolve();
+    });
+}
+
+/**
  * @description Provides decryption of AES-GCM algorithm
  * @param {string} iv Init vector in hex string
  * @param {number} tag Tag length
@@ -105,7 +133,7 @@ Crypter.prototype.DecrypAesGcm = function (iv, tag, secret, key) {
  * @description Provides PBKDF2 cipher (not working now)
  * @returns {Promise} Promise contains CryptoKey
  */
-Crypter.prototype.PBKDF2 = function (password, salt, cipher) {
+Crypter.prototype.Pbkdf2Key = function (password, salt, cipher) {
     var self = this;
 
     return new Promise(function (resolve, reject) {

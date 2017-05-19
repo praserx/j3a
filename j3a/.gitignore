@@ -1,1 +1,5 @@
-
+*.njsproj
+*.sln
+.vs/*
+node_modules/*
+typings/*

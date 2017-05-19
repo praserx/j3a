@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en-US">
    <head>
       <meta charset="UTF-8">
@@ -132,8 +132,8 @@
                 if (logPage == "true") {
                     window.localStorage.removeItem('loginPage');
 
-                    var contentHeader = '<div id="head"><div class="line"><h1>UĹľivatel</h1></div></div>';
-                    var contentInner = '<div id="content" class="center-align contact-page">PĹ™ihlĂˇĹˇenĂ˝ uĹľivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
+                    var contentHeader = '<div id="head"><div class="line"><h1>Uzivatel</h1></div></div>';
+                    var contentInner = '<div id="content" class="center-align contact-page">Prihlaseny uzivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
                     $("#login-section").html(contentHeader + contentInner);
                 }
             }

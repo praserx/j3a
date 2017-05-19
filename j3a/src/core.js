@@ -63,8 +63,8 @@ Core.prototype.worker = null;
 
 Core.prototype.devMode = false;
 
-Core.prototype.ready = false;
-Core.prototype.done = false;
+//Core.prototype.ready = false;
+//Core.prototype.done = false;
 
 Core.prototype.database = "jtadb";
 
@@ -172,12 +172,14 @@ Core.prototype.Init = function (uriConfig) {
             self.roles.LoadRoles(JSON.parse(roles));
 
             //self.AutoLogout();
+
+            resolve("complete");
         }
     });
 }
 
 /**
- * @description
+ * @description     
  * @returns {Promise}
  */
 Core.prototype.RunPostProcessing = function () {
@@ -363,6 +365,9 @@ Core.prototype.Login = function (username, password, sli) {
                     reject("failure");
                 });
             } else {
+                if (self.devMode) {
+                    console.log("[CORE] Exception: Key is asymetric-key type"); console.log(error);
+                }
                 reject("failure");
             }
         }).fail(function (error) {
@@ -381,7 +386,7 @@ Core.prototype.Login = function (username, password, sli) {
  * @param {boolean} sli Stay logged in param
  * @returns {Promise} Return one of these success/failure
  */
-Core.prototype.LoginCert = function (username, cert, sli) {
+Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
     var self = this;
 
     return new Promise(function (resolve, reject) {
@@ -552,6 +557,7 @@ Core.prototype.GetBaseUrl = function () {
 /**
  * @description Save user credentials to local storage
  * @param {string} username
+ * @param {Array} roles
  * @param {string} logoutToken
  */
 Core.prototype.SaveCredentials = function (username, roles, logoutToken) {
@@ -582,7 +588,6 @@ Core.prototype.ClearCredentials = function () {
 /**
  * @description Method provides few complex operations. In the end, all decrypted resources are stored in DB.
  * @param {Array} rolesCryptoKeys
- * @param {int} index
  * @returns {Promise} success/failure
  */
 Core.prototype.GetResources = function (rolesCryptoKeys) {

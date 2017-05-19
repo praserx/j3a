@@ -22,8 +22,8 @@
                 if (logPage == "true") {
                     window.localStorage.removeItem('loginPage');
 
-                    var contentHeader = '<div id="head"><div class="line"><h1>Uživatel</h1></div></div>';
-                    var contentInner = '<div id="content" class="center-align contact-page">Přihlášený uživatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
+                    var contentHeader = '<div id="head"><div class="line"><h1>Uzivatel</h1></div></div>';
+                    var contentInner = '<div id="content" class="center-align contact-page">Prihlaseny uzivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
                     $("#login-section").html(contentHeader + contentInner);
                 }
             }

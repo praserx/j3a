@@ -1,0 +1,5 @@
+{
+    "username": "mike",
+    "certificate": "publickeys/mike.pem",
+    "roles": [ "Zamestnanec" ]
+}

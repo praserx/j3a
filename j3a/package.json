@@ -1,10 +1,10 @@
 {
   "name": "j3a",
-  "version": "0.0.0",
+  "version": "1.0.1",
   "description": "Javascript library for authentication, authorization and accounting.",
   "main": "core.js",
   "author": {
-    "name": "Tomáš"
+    "name": "Tomas Pekar"
   },
   "dependencies": {
     "babel-polyfill": "^6.23.0",

@@ -26,6 +26,7 @@ Config.prototype.uriAcl = null;
 Config.prototype.uriBase = null;
 Config.prototype.uriResources = null;
 Config.prototype.uriRoles = null;
+Config.prototype.uriVersion = null;
 Config.prototype.uriUsers = null;
 Config.prototype.algorithmPublicKeyEncryption = null;
 Config.prototype.algorithmPrivateKeyEncryption = null;
@@ -99,6 +100,12 @@ Config.prototype.LoadConfig = function (config) {
         this.uriRoles = config["uri-roles"];
     } else {
         throw new Error("Config: Missing 'uri-roles'.");
+    }
+
+    if ("uri-version" in config) {
+        this.uriVersion = config["uri-version"];
+    } else {
+        throw new Error("Config: Missing 'uri-version'.");
     }
 
     if ("uri-users-dir" in config) {

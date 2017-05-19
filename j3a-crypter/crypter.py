@@ -2,6 +2,7 @@ import base64
 import binascii
 import codecs
 import datetime
+import time
 import io
 import json
 import os
@@ -274,7 +275,7 @@ class Crypter:
         # We have to generate version.json which specify when was everything generated
         # (why? because we want to sometimes) refresh all cached data!
         version_file = codecs.open(self.config.uri_base.replace("\\", "/") + "/" + self.config.uri_version, "w+")
-        json.dump({"version": ""}, version_file)
+        json.dump({"page-version": datetime.datetime.timestamp(datetime.datetime.now())}, version_file)
         version_file.close()
 
         if self.verbose:

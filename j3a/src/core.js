@@ -33,6 +33,9 @@ var Roles = require('./roles.js');
 // In a third way, we can customize our jQuery lib and insert it into lib/js (or somethig else) and use it
 // Or we can use ddd-jquery, but it is pretty old one.
 
+// There is a high probalibility that web is already using jQuery, so we use this one. It means,
+// that we don't have to import big jQuery.
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Constructor / Class definition
@@ -56,6 +59,7 @@ function Core() {
 
 Core.prototype.acl = null;
 Core.prototype.config = null;
+Core.prototype.version = null;
 Core.prototype.crypter = null;
 Core.prototype.roles = null;
 Core.prototype.seed = null;
@@ -77,11 +81,8 @@ Core.prototype.database = "jtadb";
  * @description Initialization of Core class (loads config and acl)
  * @param {string} uriConfig URL of main configuration file
  */
-Core.prototype.Init = function (uriConfig) {
+Core.prototype.Init = function (uriConfig, newVersion = false) {
     var self = this;
-
-
-    console.log(location.hostname);
     
     return new Promise(function (resolve, reject) {
         if (self.devMode) {
@@ -91,19 +92,20 @@ Core.prototype.Init = function (uriConfig) {
         var config = window.localStorage.getItem('config');
         var acl = window.localStorage.getItem('acl');
         var roles = window.localStorage.getItem('roles');
+        var version = window.localStorage.getItem('version');
         
         self.crypter = new Crypter();
         self.worker = new Worker();
         self.seed = new Seed(self.database);
+        
+        // Disallow jQuery cache --> it producing too many... errors
+        jQuery.ajaxSetup({ cache: false });
 
-        if ((config == null) || (acl == null) || (roles == null) || (self.devMode == true)) {
+        if ((config == null) || (acl == null) || (roles == null) || (self.devMode == true) || (newVersion == true)) {
             // Download config.json and acl.json
-
             if (self.devMode) {
                 console.log("[CORE] Downloading config.json, acl.json and roles.json from site");
             }
-
-            jQuery.ajaxSetup({ cache: false });
 
             // Download config.json
             var jqxhrConfig = jQuery.getJSON(uriConfig, function (response) {
@@ -119,6 +121,18 @@ Core.prototype.Init = function (uriConfig) {
 
             // Download acl.json and roles.json after cofign download is complete
             jqxhrConfig.done(function () {
+
+                var jqxhrVersion = jQuery.getJSON(self.config.uriVersion, function (response) {
+                    version = response;
+                    self.version = version["page-version"];
+                }).fail(function (error) {
+                    if (self.devMode) {
+                        console.log("[CORE] Can't donwload 'version.json' file.");
+                    }
+                    reject(error);
+                });
+
+
                 var jqxhrAcl = jQuery.getJSON(self.config.GetUriAcl(), function (response) {
                     acl = response;
                     self.acl = new Acl();
@@ -142,9 +156,10 @@ Core.prototype.Init = function (uriConfig) {
                 });
 
                 // Check and set cache after all downloads are complete
-                jQuery.when(jqxhrAcl, jqxhrRoles).done(function () {
+                jQuery.when(jqxhrAcl, jqxhrRoles, jqxhrVersion).done(function () {
                     // If cache is allowed, then add config and acl to cache
                     if (self.config.allowCache == "true") {
+                        window.localStorage.setItem('version', self.version);
                         window.localStorage.setItem('config', JSON.stringify(config));
                         window.localStorage.setItem('acl', JSON.stringify(acl));
                         window.localStorage.setItem('roles', JSON.stringify(roles));
@@ -157,6 +172,8 @@ Core.prototype.Init = function (uriConfig) {
                 });
             });
         } else {
+            var newPageVersion = null;
+
             // Loads config and acl from cache
             if (self.devMode) {
                 console.log("[CORE] Loading config, acl and roles from cache");
@@ -173,13 +190,32 @@ Core.prototype.Init = function (uriConfig) {
 
             //self.AutoLogout();
 
-            resolve("complete");
+            // Download version file
+            var jqxhrVersion = jQuery.getJSON(self.config.uriVersion, function (response) {
+                newPageVersion = response["page-version"];
+            }).fail(function (error) {
+                if (self.devMode) {
+                    console.log("[CORE] Can't donwload 'version.json' file.");
+                }
+                reject(error);
+            });
+
+            // Check version
+            jQuery.when(jqxhrVersion).done(function () {
+                if (newPageVersion != version) {
+                    self.Init(uriConfig, true).then(function () {
+                        resolve("complete");
+                    });
+                } else {
+                    resolve("complete");
+                }
+            });
         }
     });
 }
 
 /**
- * @description     
+ * @description Check user authorization and process web page
  * @returns {Promise}
  */
 Core.prototype.RunPostProcessing = function () {
@@ -215,7 +251,6 @@ Core.prototype.RunPostProcessing = function () {
                     var oda = elements[index].oda;
 
                     if (oda == "R") {
-                        //window.location.href = self.config.GetUriDeniedInfoPage(); // Redirect has highest priority!
                         window.location.href = self.config.GetUriDeniedInfoPage(); // Redirect has highest priority!
                     } else if (oda == "W") {
                         self.worker.ReplaceByWarningElement(elements[index].resourceId, self.config.GetUriDeniedInfoElement());
@@ -337,13 +372,9 @@ Core.prototype.Login = function (username, password, sli) {
                             // Save user token and username
                             self.crypter.Sha256(username + (new Date()).toDateString()).then(function (result) {
                                 var logoutToken = self.crypter.ArrayBufferToHexString(result);
-
-                                console.log(username);
-                                console.log(roles);
-
                                 self.SaveCredentials(username, roles, logoutToken);
 
-                                resolve("success"); // This is  the end...
+                                resolve("success"); // This is  the end of login process...
                             });
                         }).catch(function (error) {
                             if (self.devMode) {
@@ -390,7 +421,110 @@ Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
     var self = this;
 
     return new Promise(function (resolve, reject) {
-        resolve();
+        // Check config definition
+        if (self.config == null) {
+            if (self.devMode) {
+                console.log("[CORE] Config is null, something is wrong.");
+            }
+            reject("failure");
+        }
+
+        // At first clear previous session
+        self.PartialLogout();
+
+        // Check params and set default values
+        username = typeof username !== 'undefined' ? username : null;
+        password = typeof password !== 'undefined' ? password : null;
+        sli = typeof sli !== 'undefined' ? sli : false;
+
+        // Precheck of username and password
+        if ((username == null) || (password == null)) {
+            if (self.devMode) {
+                console.log("[CORE] Username or password is wrong...");
+            }
+            reject("failure");
+        }
+
+        // Get URL of user JSON database
+        var uriUser = self.config.GetUriUserByUsername(username);
+
+        // Get JSON file
+        var jqxhrUser = jQuery.getJSON(uriUser, function (response) {
+            // Determine cipher and get other values
+            var ciphername = response["secret-algorithm"]["name"];
+            var algorithm = {};
+            var secret = response["secret"];
+            var roles = response["roles"];
+
+            // Get specific values for specific ciphers
+            if (ciphername == "AES-GCM") {
+                algorithm = {
+                    name: response["secret-algorithm"]["name"],
+                    iv: response["secret-algorithm"]["iv"],
+                    tag: response["secret-algorithm"]["tag"]
+                };
+            } else if (ciphername == "AES-CBC") {
+                algorithm = {
+                    name: response["secret-algorithm"]["name"],
+                    iv: response["secret-algorithm"]["iv"]
+                };
+            } else {
+                if (self.devMode) {
+                    console.log("[CORE] Algorithm " + ciphername + "is not supported.");
+                }
+                reject("failure");
+            }
+
+            // We have got two types of passwords, standard text password or certificate
+            if (response["key-type"] == "password") {
+                // Text password operation
+                self.crypter.Sha256Key(password, ciphername).then(function (key) {
+                    self.crypter.Decrypt(algorithm, key, secret).then(function (plaintext) {
+                        // What is a plaintext? Plaintext containt cryptokeys and
+                        // algorithms from Roles. Roles contains cryptokeys from
+                        // ACL resources.
+
+                        var rolesSecrets = JSON.parse(plaintext);
+                        self.GetResources(rolesSecrets).then(function (resources) {
+
+                            // Save user token and username
+                            self.crypter.Sha256(username + (new Date()).toDateString()).then(function (result) {
+                                var logoutToken = self.crypter.ArrayBufferToHexString(result);
+                                self.SaveCredentials(username, roles, logoutToken);
+
+                                resolve("success"); // This is  the end of login process...
+                            });
+                        }).catch(function (error) {
+                            if (self.devMode) {
+                                console.log("[CORE] Exception: "); console.log(error);
+                            }
+                            reject("failure");
+                        });
+
+                    }).catch(function (error) {
+                        if (self.devMode) {
+                            console.log("[CORE] Exception: "); console.log(error);
+                        }
+                        reject("failure");
+                    });
+                }).catch(function (error) {
+                    if (self.devMode) {
+                        console.log("[CORE] Exception: "); console.log(error);
+                    }
+                    reject("failure");
+                });
+            } else {
+                if (self.devMode) {
+                    console.log("[CORE] Exception: Key is asymetric-key type"); console.log(error);
+                }
+                reject("failure");
+            }
+        }).fail(function (error) {
+            if (self.devMode) {
+                console.log("[CORE] jQuery error:"); console.log(error);
+            }
+            reject("failure");
+        });
     });
 }
 
@@ -412,6 +546,7 @@ Core.prototype.PartialLogout = function () {
 
 /**
  * @description Provides auto logout
+ * @deprecated Since 1.0.1 This is not working properly
  */
 Core.prototype.AutoLogout = function () {
     // Provide auto logout

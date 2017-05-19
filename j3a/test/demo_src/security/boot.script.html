@@ -1,12 +1,11 @@
-    <!--
+    
     <script src="http://demo.localhost/build/j3a.js"></script>
-    -->
     
+    
+    <!--
     <script src="https://praserx.github.io/j3a/demo/js/j3a.js"></script>
-    
+    -->
     <script type="text/javascript">
-        console.log("Boot script!!");
-
         //////////////////////////////////////////////////////////////////////////////////
         // Handle page dynamic changes (quick action!)
         //////////////////////////////////////////////////////////////////////////////////
@@ -34,8 +33,8 @@
         //////////////////////////////////////////////////////////////////////////////////
 
         // J3A config url
-        //var configUrl = "http://demo.localhost/test/demo/config.json";    // localhost
-        var configUrl = "https://praserx.github.io/j3a/demo/config.json";
+        var configUrl = "http://demo.localhost/test/demo/config.json";    // localhost
+        //var configUrl = "https://praserx.github.io/j3a/demo/config.json";
         
         // JA3 stuff
         j3a = new J3A(true);    // New J3A
@@ -68,7 +67,18 @@
             });
         });
 
-        // Login button
+        // Login Certificate button
+        $("#login-cert-form").on("submit", function (e) {
+            e.preventDefault();
+            j3a.LoginCert($("#username").val(), $("#password").val()).then(function (result) {
+                window.location.href = j3a.GetBaseUrl(); // Now redirect to main page!
+            }, function (err) {
+                console.log(err);
+                $("#login-failed").show();
+            });
+        });
+
+        // Logout button
         $("#link-logout").click(function () {
             j3a.PartialLogout();
             window.location.href = j3a.GetBaseUrl();

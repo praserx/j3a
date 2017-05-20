@@ -49,11 +49,6 @@ if __name__ == "__main__":
         print("Error: Source folder doesn't exists.")
         exit(1)
 
-    # Destination folder does not exists
-    if not os.path.isdir(dest):
-        print("Error: Destination folder doesn't exists.")
-        exit(1)
-
     # Dest can not be the same as source
     if dest == src:
         print("Error: Destination directory can't be the same as source directory!")
@@ -63,21 +58,27 @@ if __name__ == "__main__":
     crypter = Crypter(verbose)
     
     # Print warning
-    select = input("Content of destination folder will be removed. Do you want continue? [y/n]\n")
+    select = input("Content of destination directory will be removed (if exists). Do you want continue? [y/n]\n")
     if (select != "y") and (select != "yes"):
         exit(0)
     
+    temp = dest + '/temp'
+
     # Print init info
     print("Initializing...")
     crypter.initialize(src, dest)
 
     # Print analyze info
     print("Analyzing directory...")
-    crypter.analyze(dest)
+    crypter.analyze()
 
     # Print encryption info
     print("Processing files...")
     crypter.process()
+
+    # Print finalieze info
+    print("Finishing processing...")
+    crypter.finalize(dest)
 
     # Print done
     print("Postprocessing is done! Check output files.")

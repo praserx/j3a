@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -61,6 +62,7 @@ class Crypter:
         self.web_pages = []
 
         self.dir = None
+        self.tempdir = None
         self.verbose = verbose
 
         self.fileworker = FileWorker()
@@ -69,19 +71,31 @@ class Crypter:
         """ Initialize destination directory """
 
         if self.verbose:
-            print("[INITIALIZE] Purifying destination directory")
+            print("[FINALIZE] Purifying destination directory")
         
-        self.init_dest_dir(dest)
+        # Destination folder does not exists
+        if os.path.isdir(dest):
+            self.init_dest_dir(dest)
         
         if self.verbose:
-            print("[INITIALIZE] Copying content of source directory")
+            print("[INITIALIZE] Define temporary directory 'j3a_crypter_temp' in system 'temp' directory")
+
+        # Create temporary directory in system temp location
+        self.tempdir = tempfile.gettempdir() + '/j3a_crypter_temp'
+
+        if os.path.isdir(self.tempdir):
+            self.init_dest_dir(self.tempdir)
+
+        if self.verbose:
+            print("[INITIALIZE] Copying content of source directory to temporary directory")
+
+        self.copy_src_to_dest(src, self.tempdir)
         
-        self.copy_src_to_dest(src, dest)
-        
-    def analyze(self, dir):
+    def analyze(self):
         """ Analyze destination directory, load files and index web pages """
 
-        self.dir = dir
+        self.dir = self.tempdir
+        dir = self.tempdir
 
         # Index config file
         for file in os.listdir(dir):
@@ -280,6 +294,15 @@ class Crypter:
 
         if self.verbose:
             print("[PROCESS] Version file has been generated")
+
+    def finalize(self, dest):
+        """ Finalize - copy files from temp dir to dest dir """
+
+        if self.verbose:
+            print("[FINALIZE] Copying content of temporary directory to destination directory")
+        
+        self.copy_src_to_dest(self.tempdir, dest)
+        rmtree(self.tempdir)
 
     def init_dest_dir(self, dest):
         """ Remove content of destination directory """

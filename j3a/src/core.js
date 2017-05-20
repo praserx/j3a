@@ -345,11 +345,6 @@ Core.prototype.Login = function (username, password, sli) {
                     iv: response["secret-algorithm"]["iv"],
                     tag: response["secret-algorithm"]["tag"]
                 };
-            } else if (ciphername == "AES-CBC") {
-                algorithm = {
-                    name: response["secret-algorithm"]["name"],
-                    iv: response["secret-algorithm"]["iv"]
-                };
             } else {
                 if (self.devMode) {
                     console.log("[CORE] Algorithm " + ciphername + "is not supported.");
@@ -410,14 +405,21 @@ Core.prototype.Login = function (username, password, sli) {
     });
 };
 
-/** >>> TODO <<<
+/**
  * @description Provides login via certificate (PEM)
  * @param {string} username Username from form
  * @param {string} cert Certificate location from form
  * @param {boolean} sli Stay logged in param
  * @returns {Promise} Return one of these success/failure
  */
-Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
+Core.prototype.LoginByPrivateKey = function (username, certificate, sli) {
+    // This could be quite confusing part too. Here we using public-key algorithm
+    // for encrypting secret --> secret is private-key, which is used for roles
+    // secret encryption. Got it?
+
+    // ROLES --> encrypted with AES-GCM --> AES-KEY
+    // AES-KEY --> encrypted with RSA-OAEP --> we need private-key to decrypt it
+
     var self = this;
 
     return new Promise(function (resolve, reject) {
@@ -434,11 +436,11 @@ Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
 
         // Check params and set default values
         username = typeof username !== 'undefined' ? username : null;
-        password = typeof password !== 'undefined' ? password : null;
+        certificate = typeof certificate !== 'undefined' ? certificate : null;
         sli = typeof sli !== 'undefined' ? sli : false;
 
         // Precheck of username and password
-        if ((username == null) || (password == null)) {
+        if ((username == null) || (certificate == null)) {
             if (self.devMode) {
                 console.log("[CORE] Username or password is wrong...");
             }
@@ -450,49 +452,69 @@ Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
 
         // Get JSON file
         var jqxhrUser = jQuery.getJSON(uriUser, function (response) {
-            // Determine cipher and get other values
-            var ciphername = response["secret-algorithm"]["name"];
-            var algorithm = {};
-            var secret = response["secret"];
-            var roles = response["roles"];
+            if (response["key-type"] == "certificate") {
 
-            // Get specific values for specific ciphers
-            if (ciphername == "AES-GCM") {
-                algorithm = {
-                    name: response["secret-algorithm"]["name"],
-                    iv: response["secret-algorithm"]["iv"],
-                    tag: response["secret-algorithm"]["tag"]
-                };
-            } else if (ciphername == "AES-CBC") {
-                algorithm = {
-                    name: response["secret-algorithm"]["name"],
-                    iv: response["secret-algorithm"]["iv"]
-                };
-            } else {
-                if (self.devMode) {
-                    console.log("[CORE] Algorithm " + ciphername + "is not supported.");
+                // Determine cipher and get other values
+                var ciphername = response["secret-algorithm"]["name"];  // symetric ciphername
+                var algorithm = {};                                     // used symetric algorithm
+                var secret = response["secret"];                        // roles secret
+                var roles = response["roles"];
+
+                var keySecret = response["key-secret"];                 // ciphertext encrypted by public-key
+                var keyAlgorithm = response["key-algorithm"]["name"];   // used asymetric algorithm
+
+                // Get specific values for specific ciphers
+                if (ciphername == "AES-GCM") {
+                    algorithm = {
+                        name: response["secret-algorithm"]["name"],
+                        iv: response["secret-algorithm"]["iv"],
+                        tag: response["secret-algorithm"]["tag"]
+                    };
+                } else {
+                    if (self.devMode) {
+                        console.log("[CORE] Algorithm " + ciphername + "is not supported.");
+                    }
+                    reject("failure");
                 }
-                reject("failure");
-            }
+                
+                // Import PCKS8 Key (PEM file format)
+                self.crypter.Pkcs8Key(certificate, keyAlgorithm).then(function (key) {
 
-            // We have got two types of passwords, standard text password or certificate
-            if (response["key-type"] == "password") {
-                // Text password operation
-                self.crypter.Sha256Key(password, ciphername).then(function (key) {
-                    self.crypter.Decrypt(algorithm, key, secret).then(function (plaintext) {
-                        // What is a plaintext? Plaintext containt cryptokeys and
-                        // algorithms from Roles. Roles contains cryptokeys from
-                        // ACL resources.
+                    var publicKeyAlgorithm = { name: keyAlgorithm };
 
-                        var rolesSecrets = JSON.parse(plaintext);
-                        self.GetResources(rolesSecrets).then(function (resources) {
+                    // Decrypt secret encrypted by public-key cipher (RSA-OAEP)
+                    self.crypter.Decrypt(publicKeyAlgorithm, key, keySecret).then(function (secretKey) {
 
-                            // Save user token and username
-                            self.crypter.Sha256(username + (new Date()).toDateString()).then(function (result) {
-                                var logoutToken = self.crypter.ArrayBufferToHexString(result);
-                                self.SaveCredentials(username, roles, logoutToken);
+                        // Now we have got a symetric secret-key so we can continue just like in stadard login procedure
 
-                                resolve("success"); // This is  the end of login process...
+                        self.crypter.RawKey(secretKey, ciphername).then(function (key) {
+                            self.crypter.Decrypt(algorithm, key, secret).then(function (plaintext) {
+                                // What is a plaintext? Plaintext containt cryptokeys and
+                                // algorithms from Roles. Roles contains cryptokeys from
+                                // ACL resources.
+
+                                var rolesSecrets = JSON.parse(plaintext);
+                                self.GetResources(rolesSecrets).then(function (resources) {
+
+                                    // Save user token and username
+                                    self.crypter.Sha256(username + (new Date()).toDateString()).then(function (result) {
+                                        var logoutToken = self.crypter.ArrayBufferToHexString(result);
+                                        self.SaveCredentials(username, roles, logoutToken);
+
+                                        resolve("success"); // This is  the end of login process...
+                                    });
+                                }).catch(function (error) {
+                                    if (self.devMode) {
+                                        console.log("[CORE] Exception: "); console.log(error);
+                                    }
+                                    reject("failure");
+                                });
+
+                            }).catch(function (error) {
+                                if (self.devMode) {
+                                    console.log("[CORE] Exception: "); console.log(error);
+                                }
+                                reject("failure");
                             });
                         }).catch(function (error) {
                             if (self.devMode) {
@@ -515,7 +537,7 @@ Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
                 });
             } else {
                 if (self.devMode) {
-                    console.log("[CORE] Exception: Key is asymetric-key type"); console.log(error);
+                    console.log("[CORE] Exception: Key is symetric-key type"); console.log(error);
                 }
                 reject("failure");
             }

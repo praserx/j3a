@@ -9,7 +9,6 @@
 // password is wrong. So every exception does not have to be an error.
 ///////////////////////////////////////////////////////////////////////////////////
 
-
 ///////////////////////////////////////////////////////////////////////////////////
 // Constructor / Class definition
 ///////////////////////////////////////////////////////////////////////////////////
@@ -63,8 +62,12 @@ Crypter.prototype.Decrypt = function (algorithm, key, secret) {
             }).catch(function (error) {
                 reject(error);
             });
-        } else if (ciphername == "AES-CBC") {
-            console.log("not supported yet...");
+        } else if (ciphername == "RSA-OAEP") {
+            self.DecrypRsaOaep(secret, key).then(function (plaintext) {
+                resolve(plaintext);
+            }).catch(function (error) {
+                reject(error);
+            });
         } else {
             reject("[CRYPTER] Algorithm " + ciphername + "is not supported.");
         }
@@ -130,7 +133,68 @@ Crypter.prototype.DecrypAesGcm = function (iv, tag, secret, key) {
 }
 
 /**
- * @description Provides PBKDF2 cipher (not working now)
+ * @description Provides decryption of RSA-OAEP algorithm
+ * @param {string} secret Secret in hex string
+ * @param {CryptoKey} key CryptoKey for RSA-OAEP
+ * @returns {Promise} Promise contains decrypted plaintext
+ */
+Crypter.prototype.DecrypRsaOaep = function (secret, key) {
+    var self = this;
+
+    const alg = { name: 'RSA-OAEP' };
+    const secretBufferd = self.HexStrToByteArray(secret);
+
+    return new Promise(function (resolve, reject) {
+        self.subtle.decrypt(alg, key, secretBufferd).then(function (plainBuffer) {
+            resolve(new TextDecoder().decode(plainBuffer));
+        }).catch(function (error) {
+            console.log("[CRYPTER] Exception: ");
+            console.log(error);
+            reject(error);
+        });
+    });
+}
+
+/**
+ * @description Provides SHA-256 hash
+ * @param {string} plaintext Input plaintext
+ * @returns {Promise} Promise contains hash
+ */
+Crypter.prototype.Sha256 = function (plaintext) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        const plaintextUtf8 = new TextEncoder().encode(plaintext);
+
+        self.subtle.digest('SHA-256', plaintextUtf8).then(function (hash) {
+            resolve(hash);
+        }).catch(function (error) {
+            reject(error);
+        });
+    });
+};
+
+/**
+ * @description Provides SHA-512 hash
+ * @param {string} plaintext Input plaintext
+ * @returns {Promise} Promise contains hash
+ */
+Crypter.prototype.Sha512 = function (plaintext) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        const plaintextUtf8 = new TextEncoder().encode(plaintext);
+
+        self.subtle.digest('SHA-512', plaintextUtf8).then(function (hash) {
+            resolve(hash);
+        }).catch(function (error) {
+            reject(error);
+        });
+    });
+};
+
+/**
+ * @description Provides PBKDF2 key derivation (not working now)
  * @returns {Promise} Promise contains CryptoKey
  */
 Crypter.prototype.Pbkdf2Key = function (password, salt, cipher) {
@@ -167,25 +231,6 @@ Crypter.prototype.Pbkdf2Key = function (password, salt, cipher) {
             });
         }).catch(function (err) {
             console.error(err);
-        });
-    });
-};
-
-/**
- * @description Provides SHA-256 hash
- * @param {string} plaintext Input plaintext
- * @returns {Promise} Promise contains hash
- */
-Crypter.prototype.Sha256 = function (plaintext) {
-    var self = this;
-
-    return new Promise(function (resolve, reject) {
-        const plaintextUtf8 = new TextEncoder().encode(plaintext);
-
-        self.subtle.digest('SHA-256', plaintextUtf8).then(function (hash) {
-            resolve(hash);
-        }).catch(function (error) {
-            reject(error);
         });
     });
 };
@@ -236,6 +281,57 @@ Crypter.prototype.RawKey = function (rawKey, ciphername) {
 }
 
 /**
+ * @description Creates crypto key from PKCS#8 format
+ * @param {string} pkcs8Key PKCS#8 key
+ * @param {string} ciphername Specification of output key cipher type
+ * @returns {Promise} Promise contains CryptoKey
+ */
+Crypter.prototype.Pkcs8Key = function (pemPrivateKey, ciphername) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        self.subtle.importKey(
+            "pkcs8",
+            self.PemToByteArray(pemPrivateKey),
+            {
+                name: ciphername,
+                hash: { name: "SHA-256" } // or SHA-512
+            },
+            true,
+            ["decrypt"]
+        ).then(function (key) {
+            resolve(key);
+        }).catch(function (error) {
+            reject(error);
+        });
+    });
+}
+
+/**
+ * @description Provides conversion from ByteArray to Hex string (source: MDN documantation)
+ * @param {ByteArray} buffer Input ByteArray
+ * @returns {string} Hex string
+ */
+Crypter.prototype.ArrayBufferToHexString = function (buffer) {
+    var hexCodes = [];
+    var view = new DataView(buffer);
+
+    for (var i = 0; i < view.byteLength; i += 4) {
+        // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
+        var value = view.getUint32(i)
+        // toString(16) will give the hex representation of the number without padding
+        var stringValue = value.toString(16)
+        // We use concatenation and slice for padding
+        var padding = '00000000'
+        var paddedValue = (padding + stringValue).slice(-padding.length)
+        hexCodes.push(paddedValue);
+    }
+
+    // Join all the hex strings into one
+    return (hexCodes.join("")).toLocaleUpperCase();
+};
+
+/**
  * @description Provides conversion from Hex string to Uint8Array (ByteArray)
  * @param {string} hex String hex value
  * @returns {Uint8Array}
@@ -273,28 +369,38 @@ Crypter.prototype.StrToByteArray = function (str) {
 };
 
 /**
- * @description Provides conversion from ByteArray to Hex string (source: MDN documantation)
- * @param {ByteArray} buffer Input ByteArray
- * @returns {string} Hex string
+ * @description Provides conversion from String encoded in Base64 to Uint8Array (ByteArray)
+ * @param {string} base64String Input Base64String
+ * @returns {Uint8Array}
  */
-Crypter.prototype.ArrayBufferToHexString = function (buffer) {
-    var hexCodes = [];
-    var view = new DataView(buffer);
+Crypter.prototype.Base64ToByteArray = function (base64String) {
+    var byteString = window.atob(base64String);
+    var byteArray = new Uint8Array(byteString.length);
 
-    for (var i = 0; i < view.byteLength; i += 4) {
-        // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
-        var value = view.getUint32(i)
-        // toString(16) will give the hex representation of the number without padding
-        var stringValue = value.toString(16)
-        // We use concatenation and slice for padding
-        var padding = '00000000'
-        var paddedValue = (padding + stringValue).slice(-padding.length)
-        hexCodes.push(paddedValue);
+    for (var i = 0; i < byteString.length; i++) {
+        byteArray[i] = byteString.charCodeAt(i);
     }
+    
+    return byteArray;
+}
 
-    // Join all the hex strings into one
-    return (hexCodes.join("")).toLocaleUpperCase();
-};
+/**
+ * @description Provides conversion (unpacking) from PEM to PKCS8 DER format
+ * @param {string} pem PEM certificate (private key)
+ * @returns {Uint8Array}
+ */
+Crypter.prototype.PemToByteArray = function (pem) {
+    // Remove new lines
+    var b64Lines = pem.replace(/\r?\n|\r/g, "");
+
+    // Remove header
+    var b64Prefix = b64Lines.replace('-----BEGIN PRIVATE KEY-----', '');
+
+    // Remove footer
+    var b64Final = b64Prefix.replace('-----END PRIVATE KEY-----', '');
+
+    return this.Base64ToByteArray(b64Final);
+}
 
 // Browserify export
 module.exports = Crypter;

@@ -133,6 +133,30 @@
         });
 
         //////////////////////////////////////////////////////////////////////////////////
+        // Certificate input loading --> Via new FileReader API (still under development)
+        //////////////////////////////////////////////////////////////////////////////////
+        var certificate = null;
+
+        $(document).ready(function () {
+            $('#certificate').on('change', function (e) {
+                var file = e.target.files[0];
+                if (!file) { return; }
+
+                // New file reader instance
+                var reader = new FileReader();
+
+                // What to do if file is loaded
+                reader.onload = function (e) {
+                    var contents = e.target.result;
+                    certificate = contents;
+                };
+
+                // Now read file
+                reader.readAsText(file);
+            });
+        });
+
+        //////////////////////////////////////////////////////////////////////////////////
         // Click events
         //////////////////////////////////////////////////////////////////////////////////
 
@@ -147,7 +171,18 @@
             });
         });
 
-        // Login button
+        // Login Certificate button
+        $("#login-cert-form").on("submit", function (e) {
+            e.preventDefault();
+            j3a.LoginByPrivateKey($("#username").val(), certificate).then(function (result) {
+                window.location.href = j3a.GetBaseUrl(); // Now redirect to main page!
+            }, function (err) {
+                console.log(err);
+                $("#login-failed").show();
+            });
+        });
+
+        // Logout button
         $("#link-logout").click(function () {
             j3a.PartialLogout();
             window.location.href = j3a.GetBaseUrl();

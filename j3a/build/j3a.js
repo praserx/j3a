@@ -663,11 +663,6 @@ Core.prototype.Login = function (username, password, sli) {
                     iv: response["secret-algorithm"]["iv"],
                     tag: response["secret-algorithm"]["tag"]
                 };
-            } else if (ciphername == "AES-CBC") {
-                algorithm = {
-                    name: response["secret-algorithm"]["name"],
-                    iv: response["secret-algorithm"]["iv"]
-                };
             } else {
                 if (self.devMode) {
                     console.log("[CORE] Algorithm " + ciphername + "is not supported.");
@@ -727,14 +722,21 @@ Core.prototype.Login = function (username, password, sli) {
     });
 };
 
-/** >>> TODO <<<
+/**
  * @description Provides login via certificate (PEM)
  * @param {string} username Username from form
  * @param {string} cert Certificate location from form
  * @param {boolean} sli Stay logged in param
  * @returns {Promise} Return one of these success/failure
  */
-Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
+Core.prototype.LoginByPrivateKey = function (username, certificate, sli) {
+    // This could be quite confusing part too. Here we using public-key algorithm
+    // for encrypting secret --> secret is private-key, which is used for roles
+    // secret encryption. Got it?
+
+    // ROLES --> encrypted with AES-GCM --> AES-KEY
+    // AES-KEY --> encrypted with RSA-OAEP --> we need private-key to decrypt it
+
     var self = this;
 
     return new Promise(function (resolve, reject) {
@@ -751,11 +753,11 @@ Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
 
         // Check params and set default values
         username = typeof username !== 'undefined' ? username : null;
-        password = typeof password !== 'undefined' ? password : null;
+        certificate = typeof certificate !== 'undefined' ? certificate : null;
         sli = typeof sli !== 'undefined' ? sli : false;
 
         // Precheck of username and password
-        if (username == null || password == null) {
+        if (username == null || certificate == null) {
             if (self.devMode) {
                 console.log("[CORE] Username or password is wrong...");
             }
@@ -767,49 +769,68 @@ Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
 
         // Get JSON file
         var jqxhrUser = jQuery.getJSON(uriUser, function (response) {
-            // Determine cipher and get other values
-            var ciphername = response["secret-algorithm"]["name"];
-            var algorithm = {};
-            var secret = response["secret"];
-            var roles = response["roles"];
+            if (response["key-type"] == "certificate") {
 
-            // Get specific values for specific ciphers
-            if (ciphername == "AES-GCM") {
-                algorithm = {
-                    name: response["secret-algorithm"]["name"],
-                    iv: response["secret-algorithm"]["iv"],
-                    tag: response["secret-algorithm"]["tag"]
-                };
-            } else if (ciphername == "AES-CBC") {
-                algorithm = {
-                    name: response["secret-algorithm"]["name"],
-                    iv: response["secret-algorithm"]["iv"]
-                };
-            } else {
-                if (self.devMode) {
-                    console.log("[CORE] Algorithm " + ciphername + "is not supported.");
+                // Determine cipher and get other values
+                var ciphername = response["secret-algorithm"]["name"]; // symetric ciphername
+                var algorithm = {}; // used symetric algorithm
+                var secret = response["secret"]; // roles secret
+                var roles = response["roles"];
+
+                var keySecret = response["key-secret"]; // ciphertext encrypted by public-key
+                var keyAlgorithm = response["key-algorithm"]["name"]; // used asymetric algorithm
+
+                // Get specific values for specific ciphers
+                if (ciphername == "AES-GCM") {
+                    algorithm = {
+                        name: response["secret-algorithm"]["name"],
+                        iv: response["secret-algorithm"]["iv"],
+                        tag: response["secret-algorithm"]["tag"]
+                    };
+                } else {
+                    if (self.devMode) {
+                        console.log("[CORE] Algorithm " + ciphername + "is not supported.");
+                    }
+                    reject("failure");
                 }
-                reject("failure");
-            }
 
-            // We have got two types of passwords, standard text password or certificate
-            if (response["key-type"] == "password") {
-                // Text password operation
-                self.crypter.Sha256Key(password, ciphername).then(function (key) {
-                    self.crypter.Decrypt(algorithm, key, secret).then(function (plaintext) {
-                        // What is a plaintext? Plaintext containt cryptokeys and
-                        // algorithms from Roles. Roles contains cryptokeys from
-                        // ACL resources.
+                // Import PCKS8 Key (PEM file format)
+                self.crypter.Pkcs8Key(certificate, keyAlgorithm).then(function (key) {
 
-                        var rolesSecrets = JSON.parse(plaintext);
-                        self.GetResources(rolesSecrets).then(function (resources) {
+                    var publicKeyAlgorithm = { name: keyAlgorithm };
 
-                            // Save user token and username
-                            self.crypter.Sha256(username + new Date().toDateString()).then(function (result) {
-                                var logoutToken = self.crypter.ArrayBufferToHexString(result);
-                                self.SaveCredentials(username, roles, logoutToken);
+                    // Decrypt secret encrypted by public-key cipher (RSA-OAEP)
+                    self.crypter.Decrypt(publicKeyAlgorithm, key, keySecret).then(function (secretKey) {
 
-                                resolve("success"); // This is  the end of login process...
+                        // Now we have got a symetric secret-key so we can continue just like in stadard login procedure
+
+                        self.crypter.RawKey(secretKey, ciphername).then(function (key) {
+                            self.crypter.Decrypt(algorithm, key, secret).then(function (plaintext) {
+                                // What is a plaintext? Plaintext containt cryptokeys and
+                                // algorithms from Roles. Roles contains cryptokeys from
+                                // ACL resources.
+
+                                var rolesSecrets = JSON.parse(plaintext);
+                                self.GetResources(rolesSecrets).then(function (resources) {
+
+                                    // Save user token and username
+                                    self.crypter.Sha256(username + new Date().toDateString()).then(function (result) {
+                                        var logoutToken = self.crypter.ArrayBufferToHexString(result);
+                                        self.SaveCredentials(username, roles, logoutToken);
+
+                                        resolve("success"); // This is  the end of login process...
+                                    });
+                                }).catch(function (error) {
+                                    if (self.devMode) {
+                                        console.log("[CORE] Exception: ");console.log(error);
+                                    }
+                                    reject("failure");
+                                });
+                            }).catch(function (error) {
+                                if (self.devMode) {
+                                    console.log("[CORE] Exception: ");console.log(error);
+                                }
+                                reject("failure");
                             });
                         }).catch(function (error) {
                             if (self.devMode) {
@@ -831,7 +852,7 @@ Core.prototype.LoginByPrivateKey = function (username, cert, sli) {
                 });
             } else {
                 if (self.devMode) {
-                    console.log("[CORE] Exception: Key is asymetric-key type");console.log(error);
+                    console.log("[CORE] Exception: Key is symetric-key type");console.log(error);
                 }
                 reject("failure");
             }
@@ -1333,7 +1354,6 @@ module.exports = Core;
 // password is wrong. So every exception does not have to be an error.
 ///////////////////////////////////////////////////////////////////////////////////
 
-
 ///////////////////////////////////////////////////////////////////////////////////
 // Constructor / Class definition
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1386,8 +1406,12 @@ Crypter.prototype.Decrypt = function (algorithm, key, secret) {
             }).catch(function (error) {
                 reject(error);
             });
-        } else if (ciphername == "AES-CBC") {
-            console.log("not supported yet...");
+        } else if (ciphername == "RSA-OAEP") {
+            self.DecrypRsaOaep(secret, key).then(function (plaintext) {
+                resolve(plaintext);
+            }).catch(function (error) {
+                reject(error);
+            });
         } else {
             reject("[CRYPTER] Algorithm " + ciphername + "is not supported.");
         }
@@ -1453,7 +1477,68 @@ Crypter.prototype.DecrypAesGcm = function (iv, tag, secret, key) {
 };
 
 /**
- * @description Provides PBKDF2 cipher (not working now)
+ * @description Provides decryption of RSA-OAEP algorithm
+ * @param {string} secret Secret in hex string
+ * @param {CryptoKey} key CryptoKey for RSA-OAEP
+ * @returns {Promise} Promise contains decrypted plaintext
+ */
+Crypter.prototype.DecrypRsaOaep = function (secret, key) {
+    var self = this;
+
+    var alg = { name: 'RSA-OAEP' };
+    var secretBufferd = self.HexStrToByteArray(secret);
+
+    return new Promise(function (resolve, reject) {
+        self.subtle.decrypt(alg, key, secretBufferd).then(function (plainBuffer) {
+            resolve(new TextDecoder().decode(plainBuffer));
+        }).catch(function (error) {
+            console.log("[CRYPTER] Exception: ");
+            console.log(error);
+            reject(error);
+        });
+    });
+};
+
+/**
+ * @description Provides SHA-256 hash
+ * @param {string} plaintext Input plaintext
+ * @returns {Promise} Promise contains hash
+ */
+Crypter.prototype.Sha256 = function (plaintext) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        var plaintextUtf8 = new TextEncoder().encode(plaintext);
+
+        self.subtle.digest('SHA-256', plaintextUtf8).then(function (hash) {
+            resolve(hash);
+        }).catch(function (error) {
+            reject(error);
+        });
+    });
+};
+
+/**
+ * @description Provides SHA-512 hash
+ * @param {string} plaintext Input plaintext
+ * @returns {Promise} Promise contains hash
+ */
+Crypter.prototype.Sha512 = function (plaintext) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        var plaintextUtf8 = new TextEncoder().encode(plaintext);
+
+        self.subtle.digest('SHA-512', plaintextUtf8).then(function (hash) {
+            resolve(hash);
+        }).catch(function (error) {
+            reject(error);
+        });
+    });
+};
+
+/**
+ * @description Provides PBKDF2 key derivation (not working now)
  * @returns {Promise} Promise contains CryptoKey
  */
 Crypter.prototype.Pbkdf2Key = function (password, salt, cipher) {
@@ -1484,25 +1569,6 @@ Crypter.prototype.Pbkdf2Key = function (password, salt, cipher) {
             });
         }).catch(function (err) {
             console.error(err);
-        });
-    });
-};
-
-/**
- * @description Provides SHA-256 hash
- * @param {string} plaintext Input plaintext
- * @returns {Promise} Promise contains hash
- */
-Crypter.prototype.Sha256 = function (plaintext) {
-    var self = this;
-
-    return new Promise(function (resolve, reject) {
-        var plaintextUtf8 = new TextEncoder().encode(plaintext);
-
-        self.subtle.digest('SHA-256', plaintextUtf8).then(function (hash) {
-            resolve(hash);
-        }).catch(function (error) {
-            reject(error);
         });
     });
 };
@@ -1553,6 +1619,51 @@ Crypter.prototype.RawKey = function (rawKey, ciphername) {
 };
 
 /**
+ * @description Creates crypto key from PKCS#8 format
+ * @param {string} pkcs8Key PKCS#8 key
+ * @param {string} ciphername Specification of output key cipher type
+ * @returns {Promise} Promise contains CryptoKey
+ */
+Crypter.prototype.Pkcs8Key = function (pemPrivateKey, ciphername) {
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+        self.subtle.importKey("pkcs8", self.PemToByteArray(pemPrivateKey), {
+            name: ciphername,
+            hash: { name: "SHA-256" } // or SHA-512
+        }, true, ["decrypt"]).then(function (key) {
+            resolve(key);
+        }).catch(function (error) {
+            reject(error);
+        });
+    });
+};
+
+/**
+ * @description Provides conversion from ByteArray to Hex string (source: MDN documantation)
+ * @param {ByteArray} buffer Input ByteArray
+ * @returns {string} Hex string
+ */
+Crypter.prototype.ArrayBufferToHexString = function (buffer) {
+    var hexCodes = [];
+    var view = new DataView(buffer);
+
+    for (var i = 0; i < view.byteLength; i += 4) {
+        // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
+        var value = view.getUint32(i);
+        // toString(16) will give the hex representation of the number without padding
+        var stringValue = value.toString(16);
+        // We use concatenation and slice for padding
+        var padding = '00000000';
+        var paddedValue = (padding + stringValue).slice(-padding.length);
+        hexCodes.push(paddedValue);
+    }
+
+    // Join all the hex strings into one
+    return hexCodes.join("").toLocaleUpperCase();
+};
+
+/**
  * @description Provides conversion from Hex string to Uint8Array (ByteArray)
  * @param {string} hex String hex value
  * @returns {Uint8Array}
@@ -1590,27 +1701,37 @@ Crypter.prototype.StrToByteArray = function (str) {
 };
 
 /**
- * @description Provides conversion from ByteArray to Hex string (source: MDN documantation)
- * @param {ByteArray} buffer Input ByteArray
- * @returns {string} Hex string
+ * @description Provides conversion from String encoded in Base64 to Uint8Array (ByteArray)
+ * @param {string} base64String Input Base64String
+ * @returns {Uint8Array}
  */
-Crypter.prototype.ArrayBufferToHexString = function (buffer) {
-    var hexCodes = [];
-    var view = new DataView(buffer);
+Crypter.prototype.Base64ToByteArray = function (base64String) {
+    var byteString = window.atob(base64String);
+    var byteArray = new Uint8Array(byteString.length);
 
-    for (var i = 0; i < view.byteLength; i += 4) {
-        // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
-        var value = view.getUint32(i);
-        // toString(16) will give the hex representation of the number without padding
-        var stringValue = value.toString(16);
-        // We use concatenation and slice for padding
-        var padding = '00000000';
-        var paddedValue = (padding + stringValue).slice(-padding.length);
-        hexCodes.push(paddedValue);
+    for (var i = 0; i < byteString.length; i++) {
+        byteArray[i] = byteString.charCodeAt(i);
     }
 
-    // Join all the hex strings into one
-    return hexCodes.join("").toLocaleUpperCase();
+    return byteArray;
+};
+
+/**
+ * @description Provides conversion (unpacking) from PEM to PKCS8 DER format
+ * @param {string} pem PEM certificate (private key)
+ * @returns {Uint8Array}
+ */
+Crypter.prototype.PemToByteArray = function (pem) {
+    // Remove new lines
+    var b64Lines = pem.replace(/\r?\n|\r/g, "");
+
+    // Remove header
+    var b64Prefix = b64Lines.replace('-----BEGIN PRIVATE KEY-----', '');
+
+    // Remove footer
+    var b64Final = b64Prefix.replace('-----END PRIVATE KEY-----', '');
+
+    return this.Base64ToByteArray(b64Final);
 };
 
 // Browserify export

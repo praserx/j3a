@@ -13,11 +13,8 @@
     "babel-preset-stage-0": "^6.24.1",
     "babelify": "^7.3.0",
     "browserify": "^14.1.0",
-    "ddd-jquery": "^0.4.0",
     "jquery": "^3.1.1",
-    "minifier": "^0.8.1",
-    "uglifyjs": "^2.4.10",
-    "underscore": "^1.8.3"
+    "uglifyjs": "^2.4.10"
   },
   "browserify": {
     "transform": [
@@ -31,10 +28,10 @@
       ]
     ]
   },
-    "scripts": {
-        "buildmin": "browserify src/core.js --standalone J3A | uglifyjs > build/j3a.min.js",
-        "build": "browserify src/core.js --standalone J3A -o build/j3a.js",
-        "_start": "npm run build",
-        "start": "npm run build && npm run buildmin"
-    }
+  "scripts": {
+    "buildmin": "browserify src/core.js --standalone J3A | uglifyjs > build/j3a.min.js",
+    "build": "browserify src/core.js --standalone J3A -o build/j3a.js",
+    "_start": "npm run build",
+    "start": "npm run build && npm run buildmin"
+  }
 }

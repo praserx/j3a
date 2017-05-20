@@ -1,4 +1,3 @@
-*.pyproj
-*.sln
 .vs/*
-__pycache__/*
+*.sln
+*.proj

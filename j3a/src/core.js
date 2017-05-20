@@ -931,11 +931,16 @@ Core.prototype.DecryptResources = function (resourcesCryptoKeys, encryptedResour
  * @returns {Array}
  */
 Core.prototype.DownloadResources = function (resourcesIds, index = 0) {
+    // This function using recursion for async dowload all resources.
+    // The question is why. First, it is simple, easy and smart.
+    // Second, I really don't know if there is better solution,
+    // because if I am correct, jQuery this issue solving simillary.
+
     var self = this;
 
     return new Promise(function (resolve, reject) {
         var resourceUri = self.config.GetUriResourceById(resourcesIds[index]);
-
+        
         jQuery.getJSON(resourceUri, function (resource) {
             // Continue with recursion or end it
             if ((index + 1) != resourcesIds.length) {
@@ -948,7 +953,7 @@ Core.prototype.DownloadResources = function (resourcesIds, index = 0) {
             } else {
                 // End recursion
                 resource.resource_id = resourcesIds[index];     // Add resource ID to result structure
-                resolve([resource]);
+                resolve([resource]);                            // First item
             }
         }).fail(function (error) {
             reject(error);

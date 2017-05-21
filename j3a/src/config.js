@@ -182,6 +182,14 @@ Config.prototype.GetUriRoles = function () {
 };
 
 /**
+ * @description Returns uri of version.json file
+ * @returns {string}
+ */
+Config.prototype.GetUriVersion = function () {
+    return this.GetUriBase() + this.uriVersion;
+}
+
+/**
  * @decsription Returns Users dir URI
  * @returns {string}
  */

@@ -122,7 +122,7 @@ Core.prototype.Init = function (uriConfig, newVersion = false) {
             // Download acl.json and roles.json after cofign download is complete
             jqxhrConfig.done(function () {
 
-                var jqxhrVersion = jQuery.getJSON(self.config.uriVersion, function (response) {
+                var jqxhrVersion = jQuery.getJSON(self.config.GetUriVersion(), function (response) {
                     version = response;
                     self.version = version["page-version"];
                 }).fail(function (error) {
@@ -191,7 +191,7 @@ Core.prototype.Init = function (uriConfig, newVersion = false) {
             //self.AutoLogout();
 
             // Download version file
-            var jqxhrVersion = jQuery.getJSON(self.config.uriVersion, function (response) {
+            var jqxhrVersion = jQuery.getJSON(self.config.GetUriVersion(), function (response) {
                 newPageVersion = response["page-version"];
             }).fail(function (error) {
                 if (self.devMode) {
@@ -357,7 +357,7 @@ Core.prototype.Login = function (username, password, sli) {
                 // Text password operation
                 self.crypter.Sha256Key(password, ciphername).then(function (key) {
                     self.crypter.Decrypt(algorithm, key, secret).then(function (plaintext) {
-                        // What is a plaintext? Plaintext containt cryptokeys and
+                        // What is a plaintext? Plaintext contains cryptokeys and
                         // algorithms from Roles. Roles contains cryptokeys from
                         // ACL resources.
 

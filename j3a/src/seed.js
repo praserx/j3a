@@ -16,13 +16,16 @@
 /**
  * @description Site Encrypted Elements Database
  */
-function Seed() {}
+function Seed(prefix) {
+    this.prefix = prefix;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Properties
 ///////////////////////////////////////////////////////////////////////////////////
 
 Seed.prototype.records = [];
+Seed.prototype.prefix = null;
 
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -35,9 +38,8 @@ Seed.prototype.records = [];
  */
 Seed.prototype.Insert = function (records) {
     for (var i = 0; i < records.length; i++) {
-        console.log('db_' + records[i].resource_id);
-        this.records.push('db_' + records[i].resource_id);
-        window.localStorage.setItem('db_' + records[i].resource_id, records[i].content)
+        this.records.push(this.prefix + 'db_' + records[i].resource_id);
+        window.localStorage.setItem(this.prefix + 'db_' + records[i].resource_id, records[i].content)
     }
 }
 
@@ -51,7 +53,7 @@ Seed.prototype.GetElementById = function (id) {
 
     return new Promise(function (resolve, reject) {
 
-        var search = 'db_' + id;
+        var search = self.prefix + 'db_' + id;
         var item = window.localStorage.getItem(search);
 
         if (item != null) {

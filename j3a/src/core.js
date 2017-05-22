@@ -81,7 +81,7 @@ Core.prototype.prefix = null;
  * @description Initialization of Core class (loads config and acl)
  * @param {string} uriConfig URL of main configuration file
  */
-Core.prototype.Init = function (uriConfig, prefix = "") {
+Core.prototype.Init = function (uriConfig, newVersion = false, prefix = "") {
     var self = this;
     
     this.prefix = prefix + "_";
@@ -98,12 +98,12 @@ Core.prototype.Init = function (uriConfig, prefix = "") {
         
         self.crypter = new Crypter();
         self.worker = new Worker();
-        self.seed = new Seed();
+        self.seed = new Seed(self.prefix);
         
         // Disallow jQuery cache --> it producing too many... errors
         jQuery.ajaxSetup({ cache: false });
 
-        if ((config == null) || (acl == null) || (roles == null) || (self.devMode == true)) {
+        if ((config == null) || (acl == null) || (roles == null) || (self.devMode == true) || (newVersion == true)) {
             // Download config.json and acl.json
             if (self.devMode) {
                 console.log("[CORE] Downloading config.json, acl.json and roles.json from site");
@@ -205,7 +205,7 @@ Core.prototype.Init = function (uriConfig, prefix = "") {
             // Check version
             jQuery.when(jqxhrVersion).done(function () {
                 if (newPageVersion != version) {
-                    self.Init(uriConfig, true).then(function () {
+                    self.Init(uriConfig, true, self.prefix).then(function () {
                         resolve("complete");
                     });
                 } else {
@@ -556,6 +556,8 @@ Core.prototype.LoginByPrivateKey = function (username, certificate, sli) {
  * @description Destroy database and remove all user data
  */
 Core.prototype.Logout = function () {
+    var self = this;
+
     this.ClearCredentials();
     Seed.ClearDatabase();
 }
@@ -564,6 +566,8 @@ Core.prototype.Logout = function () {
  * @description Clear all records from DB (do not remove Database it self) and remove all user data
  */
 Core.prototype.PartialLogout = function () {
+    var self = this;
+
     this.ClearCredentials();
     this.seed.ClearRecords();
 }
@@ -573,6 +577,8 @@ Core.prototype.PartialLogout = function () {
  * @deprecated Since 1.0.1 This is not working properly
  */
 Core.prototype.AutoLogout = function () {
+    var self = this;
+
     // Provide auto logout
     if (this.config.autoLogout == "true") {
         // Source: W3Schools
@@ -605,8 +611,10 @@ Core.prototype.AutoLogout = function () {
  * @returns {Array}
  */
 Core.prototype.GetUser = function () {
-    var username = window.localStorage.getItem(self.prefix + 'user_username');
-    var roles = JSON.parse(window.localStorage.getItem(self.prefix + 'user_roles'));
+    var self = this;
+
+    var username = window.localStorage.getItem(this.prefix + 'user_username');
+    var roles = JSON.parse(window.localStorage.getItem(this.prefix + 'user_roles'));
 
     if (username == null) {
         return null;
@@ -620,7 +628,9 @@ Core.prototype.GetUser = function () {
  * @returns {boolen}
  */
 Core.Logged = function () {
-    var username = window.localStorage.getItem(self.prefix + 'user_username');
+    var self = this;
+
+    var username = window.localStorage.getItem(this.prefix + 'user_username');
 
     if (username == null) {
         return false;
@@ -635,7 +645,9 @@ Core.Logged = function () {
  * @returns {boolean}
  */
 Core.InRole = function (roleName) {
-    var roles = window.localStorage.getItem(self.prefix + 'user_roles');
+    var self = this;
+
+    var roles = window.localStorage.getItem(this.prefix + 'user_roles');
 
     if (roles == null) {
         return false;
@@ -710,6 +722,8 @@ Core.prototype.IsAuthorized = function (resourceId, user) {
  * @returns {string}
  */
 Core.prototype.GetBaseUrl = function () {
+    var self = this;
+
     return this.config.GetUriBase();
 }
 
@@ -735,6 +749,8 @@ Core.prototype.SaveCredentials = function (username, roles, logoutToken) {
  * @description Removes all credentials in local storage
  */
 Core.prototype.ClearCredentials = function () {
+    var self = this;
+
     window.localStorage.removeItem(self.prefix + 'user_username');
     window.localStorage.removeItem(self.prefix + 'user_roles');
     window.localStorage.removeItem(self.prefix + 'user_logoutToken');
@@ -967,6 +983,8 @@ Core.prototype.DownloadResources = function (resourcesIds, index = 0) {
  * @returns {Array} Contains resources IDs
  */
 Core.prototype.ExtractIds = function (structuredArray) {
+    var self = this;
+
     var ids = [];
 
     for (var i = 0; i < structuredArray.length; i++) {
@@ -982,6 +1000,8 @@ Core.prototype.ExtractIds = function (structuredArray) {
  * @returns {Array}
  */
 Core.prototype.RemoveDuplicateResources = function (resources) {
+    var self = this;
+
     // Duplicate less resources
     var dlResources = []
 
@@ -1010,6 +1030,8 @@ Core.prototype.RemoveDuplicateResources = function (resources) {
  * @returns {string} Encrypted resource (secret)
  */
 Core.prototype.GetEncryptedResourceById = function (resources, id) {
+    var self = this;
+
     for (var i = 0; i < resources.length; i++) {
         if (resources[i].resource_id == id) {
             return resources[i].ciphertext;

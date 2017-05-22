@@ -42,7 +42,7 @@
         //j3a.EnableDevMode();    // Enable developer mode
 
         // Run initialization
-        j3a.Init(configUrl, "jtademo").then(function () {
+        j3a.Init(configUrl, false, "jtademo").then(function () {
             $(document).ready(function () {
                 // Run J3A page postprocessing
                 j3a.RunPostProcessing().then(function (result) {

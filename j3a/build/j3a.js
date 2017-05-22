@@ -392,11 +392,12 @@ Core.prototype.seed = null;
 Core.prototype.worker = null;
 
 Core.prototype.devMode = false;
+Core.prototype.prefix = null;
 
 //Core.prototype.ready = false;
 //Core.prototype.done = false;
+//Core.prototype.database = "jtadb";
 
-Core.prototype.database = "jtadb";
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Methods
@@ -408,22 +409,25 @@ Core.prototype.database = "jtadb";
  */
 Core.prototype.Init = function (uriConfig) {
     var newVersion = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+    var prefix = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : "";
 
     var self = this;
+
+    this.prefix = prefix + "_";
 
     return new Promise(function (resolve, reject) {
         if (self.devMode) {
             console.log("[CORE] Starting initialization");
         }
 
-        var config = window.localStorage.getItem('config');
-        var acl = window.localStorage.getItem('acl');
-        var roles = window.localStorage.getItem('roles');
-        var version = window.localStorage.getItem('version');
+        var config = window.localStorage.getItem(self.prefix + 'config');
+        var acl = window.localStorage.getItem(self.prefix + 'acl');
+        var roles = window.localStorage.getItem(self.prefix + 'roles');
+        var version = window.localStorage.getItem(self.prefix + 'version');
 
         self.crypter = new Crypter();
         self.worker = new Worker();
-        self.seed = new Seed(self.database);
+        self.seed = new Seed(self.prefix);
 
         // Disallow jQuery cache --> it producing too many... errors
         jQuery.ajaxSetup({ cache: false });
@@ -485,10 +489,10 @@ Core.prototype.Init = function (uriConfig) {
                 jQuery.when(jqxhrAcl, jqxhrRoles, jqxhrVersion).done(function () {
                     // If cache is allowed, then add config and acl to cache
                     if (self.config.allowCache == "true") {
-                        window.localStorage.setItem('version', self.version);
-                        window.localStorage.setItem('config', JSON.stringify(config));
-                        window.localStorage.setItem('acl', JSON.stringify(acl));
-                        window.localStorage.setItem('roles', JSON.stringify(roles));
+                        window.localStorage.setItem(self.prefix + 'version', self.version);
+                        window.localStorage.setItem(self.prefix + 'config', JSON.stringify(config));
+                        window.localStorage.setItem(self.prefix + 'acl', JSON.stringify(acl));
+                        window.localStorage.setItem(self.prefix + 'roles', JSON.stringify(roles));
                     }
 
                     // Provide auto logout
@@ -529,7 +533,7 @@ Core.prototype.Init = function (uriConfig) {
             // Check version
             jQuery.when(jqxhrVersion).done(function () {
                 if (newPageVersion != version) {
-                    self.Init(uriConfig, true).then(function () {
+                    self.Init(uriConfig, true, self.prefix).then(function () {
                         resolve("complete");
                     });
                 } else {
@@ -877,14 +881,18 @@ Core.prototype.LoginByPrivateKey = function (username, certificate, sli) {
  * @description Destroy database and remove all user data
  */
 Core.prototype.Logout = function () {
+    var self = this;
+
     this.ClearCredentials();
-    Seed.ClearDatabase(this.database);
+    Seed.ClearDatabase();
 };
 
 /**
  * @description Clear all records from DB (do not remove Database it self) and remove all user data
  */
 Core.prototype.PartialLogout = function () {
+    var self = this;
+
     this.ClearCredentials();
     this.seed.ClearRecords();
 };
@@ -894,6 +902,8 @@ Core.prototype.PartialLogout = function () {
  * @deprecated Since 1.0.1 This is not working properly
  */
 Core.prototype.AutoLogout = function () {
+    var self = this;
+
     // Provide auto logout
     if (this.config.autoLogout == "true") {
         // Source: W3Schools
@@ -908,7 +918,7 @@ Core.prototype.AutoLogout = function () {
 
             if (c.indexOf("logoutToken=") == 0) {
                 // If cookie value is not same as value in localStorage, then it's probably injected cookie, so logout.
-                if (c.substring("logoutToken=".length, c.length) != window.localStorage.getItem('user_logoutToken')) {
+                if (c.substring("logoutToken=".length, c.length) != window.localStorage.getItem(self.prefix + 'user_logoutToken')) {
                     this.PartialLogout();
                 } else {
                     cookieFound = true;
@@ -928,8 +938,10 @@ Core.prototype.AutoLogout = function () {
  * @returns {Array}
  */
 Core.prototype.GetUser = function () {
-    var username = window.localStorage.getItem('user_username');
-    var roles = JSON.parse(window.localStorage.getItem('user_roles'));
+    var self = this;
+
+    var username = window.localStorage.getItem(this.prefix + 'user_username');
+    var roles = JSON.parse(window.localStorage.getItem(this.prefix + 'user_roles'));
 
     if (username == null) {
         return null;
@@ -943,7 +955,9 @@ Core.prototype.GetUser = function () {
  * @returns {boolen}
  */
 Core.Logged = function () {
-    var username = window.localStorage.getItem('user_username');
+    var self = this;
+
+    var username = window.localStorage.getItem(this.prefix + 'user_username');
 
     if (username == null) {
         return false;
@@ -958,7 +972,9 @@ Core.Logged = function () {
  * @returns {boolean}
  */
 Core.InRole = function (roleName) {
-    var roles = window.localStorage.getItem('user_roles');
+    var self = this;
+
+    var roles = window.localStorage.getItem(this.prefix + 'user_roles');
 
     if (roles == null) {
         return false;
@@ -1033,6 +1049,8 @@ Core.prototype.IsAuthorized = function (resourceId, user) {
  * @returns {string}
  */
 Core.prototype.GetBaseUrl = function () {
+    var self = this;
+
     return this.config.GetUriBase();
 };
 
@@ -1045,14 +1063,12 @@ Core.prototype.GetBaseUrl = function () {
 Core.prototype.SaveCredentials = function (username, roles, logoutToken) {
     var self = this;
 
-    window.localStorage.setItem('user_username', username);
-    window.localStorage.setItem('user_roles', JSON.stringify(roles));
-    window.localStorage.setItem('user_logoutToken', logoutToken);
-
-    console.log(location.hostname);
+    window.localStorage.setItem(self.prefix + 'user_username', username);
+    window.localStorage.setItem(self.prefix + 'user_roles', JSON.stringify(roles));
+    window.localStorage.setItem(self.prefix + 'user_logoutToken', logoutToken);
 
     if (self.config.autoLogout == "true") {
-        document.cookie = "logoutToken=" + logoutToken;
+        document.cookie = self.prefix + "logoutToken=" + logoutToken;
     }
 };
 
@@ -1060,11 +1076,13 @@ Core.prototype.SaveCredentials = function (username, roles, logoutToken) {
  * @description Removes all credentials in local storage
  */
 Core.prototype.ClearCredentials = function () {
-    window.localStorage.removeItem('user_username');
-    window.localStorage.removeItem('user_roles');
-    window.localStorage.removeItem('user_logoutToken');
+    var self = this;
 
-    document.cookie = "logoutToken=";
+    window.localStorage.removeItem(self.prefix + 'user_username');
+    window.localStorage.removeItem(self.prefix + 'user_roles');
+    window.localStorage.removeItem(self.prefix + 'user_logoutToken');
+
+    document.cookie = self.prefix + "logoutToken=";
 };
 
 /**
@@ -1300,6 +1318,8 @@ Core.prototype.DownloadResources = function (resourcesIds) {
  * @returns {Array} Contains resources IDs
  */
 Core.prototype.ExtractIds = function (structuredArray) {
+    var self = this;
+
     var ids = [];
 
     for (var i = 0; i < structuredArray.length; i++) {
@@ -1315,6 +1335,8 @@ Core.prototype.ExtractIds = function (structuredArray) {
  * @returns {Array}
  */
 Core.prototype.RemoveDuplicateResources = function (resources) {
+    var self = this;
+
     // Duplicate less resources
     var dlResources = [];
 
@@ -1343,6 +1365,8 @@ Core.prototype.RemoveDuplicateResources = function (resources) {
  * @returns {string} Encrypted resource (secret)
  */
 Core.prototype.GetEncryptedResourceById = function (resources, id) {
+    var self = this;
+
     for (var i = 0; i < resources.length; i++) {
         if (resources[i].resource_id == id) {
             return resources[i].ciphertext;
@@ -1855,13 +1879,16 @@ module.exports = Roles;
  * @description Site Encrypted Elements Database
  */
 
-function Seed() {}
+function Seed(prefix) {
+    this.prefix = prefix;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Properties
 ///////////////////////////////////////////////////////////////////////////////////
 
 Seed.prototype.records = [];
+Seed.prototype.prefix = null;
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Methods
@@ -1873,9 +1900,8 @@ Seed.prototype.records = [];
  */
 Seed.prototype.Insert = function (records) {
     for (var i = 0; i < records.length; i++) {
-        console.log('db_' + records[i].resource_id);
-        this.records.push('db_' + records[i].resource_id);
-        window.localStorage.setItem('db_' + records[i].resource_id, records[i].content);
+        this.records.push(this.prefix + 'db_' + records[i].resource_id);
+        window.localStorage.setItem(this.prefix + 'db_' + records[i].resource_id, records[i].content);
     }
 };
 
@@ -1889,7 +1915,7 @@ Seed.prototype.GetElementById = function (id) {
 
     return new Promise(function (resolve, reject) {
 
-        var search = 'db_' + id;
+        var search = self.prefix + 'db_' + id;
         var item = window.localStorage.getItem(search);
 
         if (item != null) {
@@ -1914,7 +1940,7 @@ Seed.prototype.ClearRecords = function () {
  * @param {string} database Database name
  * @returns {Promise}
  */
-Seed.ClearDatabase = function (database) {
+Seed.ClearDatabase = function () {
     var self = this;
 
     return new Promise(function (resolve, reject) {

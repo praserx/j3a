@@ -372,7 +372,7 @@ Crypter.prototype.ArrayBufferToHexString = function (buffer) {
  */
 Crypter.prototype.ArrayBufferToString = function (buffer) {
 
-    return String.fromCharCode.apply(null, new Uint8Array(buffer));
+    return String.fromCharCode.apply(null, buffer);
 
     /*
     var hexCodes = [];

@@ -1560,9 +1560,9 @@ Crypter.prototype.Sha256 = function (plaintext) {
         var plaintextUtf8 = null;
 
         try {
-            plaintextUtf8 = new TextEncoder().encode(password);
+            plaintextUtf8 = new TextEncoder().encode(plaintext);
         } catch (error) {
-            plaintextUtf8 = self.StrToByteArray(password);
+            plaintextUtf8 = self.StrToByteArray(plaintext);
         }
 
         //const plaintextUtf8 = new TextEncoder().encode(plaintext);
@@ -1588,9 +1588,9 @@ Crypter.prototype.Sha512 = function (plaintext) {
         var plaintextUtf8 = null;
 
         try {
-            plaintextUtf8 = new TextEncoder().encode(password);
+            plaintextUtf8 = new TextEncoder().encode(plaintext);
         } catch (error) {
-            plaintextUtf8 = self.StrToByteArray(password);
+            plaintextUtf8 = self.StrToByteArray(plaintext);
         }
 
         //const plaintextUtf8 = new TextEncoder().encode(plaintext);

@@ -1628,7 +1628,7 @@ Crypter.prototype.Sha256Key = function (password, ciphername) {
         pwdUtf8 = new TextEncoder().encode(password);
     } catch (error) {
         console.log("[Warning] TextEncoder is not supported.");
-        pwdUtf8 = password;
+        pwdUtf8 = unescape(encodeURIComponent(password));
     }
 
     //const pwdUtf8 = new TextEncoder().encode(password);

@@ -1622,7 +1622,16 @@ Crypter.prototype.Pbkdf2Key = function (password, salt, cipher) {
 Crypter.prototype.Sha256Key = function (password, ciphername) {
     var self = this;
 
-    var pwdUtf8 = new TextEncoder().encode(password);
+    var pwdUtf8 = "";
+
+    try {
+        pwdUtf8 = new TextEncoder().encode(password);
+    } catch (error) {
+        console.log("[Warning] TextEncoder is not supported.");
+        pwdUtf8 = password;
+    }
+
+    //const pwdUtf8 = new TextEncoder().encode(password);
     var alg = { name: ciphername };
 
     return new Promise(function (resolve, reject) {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en-US">
    <head>
       <meta charset="UTF-8">
@@ -115,8 +115,6 @@
     <script src="https://praserx.github.io/j3a/demo/js/j3a.js"></script>
     
     <script type="text/javascript">
-        console.log("Boot script!!");
-
         //////////////////////////////////////////////////////////////////////////////////
         // Handle page dynamic changes (quick action!)
         //////////////////////////////////////////////////////////////////////////////////
@@ -128,14 +126,16 @@
                 // We can show some links or something (it can depends by user role too)
 
                 // Do not show login form if user is logged in - show his username!
+                /*
                 var logPage = window.localStorage.getItem('loginPage');
                 if (logPage == "true") {
                     window.localStorage.removeItem('loginPage');
 
-                    var contentHeader = '<div id="head"><div class="line"><h1>UĹľivatel</h1></div></div>';
-                    var contentInner = '<div id="content" class="center-align contact-page">PĹ™ihlĂˇĹˇenĂ˝ uĹľivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
+                    var contentHeader = '<div id="head"><div class="line"><h1>Uzivatel</h1></div></div>';
+                    var contentInner = '<div id="content" class="center-align contact-page">Prihlaseny uzivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
                     $("#login-section").html(contentHeader + contentInner);
                 }
+                */
             }
         });
 
@@ -148,11 +148,11 @@
         var configUrl = "https://praserx.github.io/j3a/demo/config.json";
         
         // JA3 stuff
-        j3a = new J3A(true);    // New J3A
-        j3a.EnableDevMode();    // Enable developer mode
+        j3a = new J3A();        // New J3A
+        //j3a.EnableDevMode();    // Enable developer mode
 
         // Run initialization
-        j3a.Init(configUrl).then(function () {
+        j3a.Init(configUrl, "jtademo").then(function () {
             $(document).ready(function () {
                 // Run J3A page postprocessing
                 j3a.RunPostProcessing().then(function (result) {
@@ -161,6 +161,30 @@
             });
         }).catch(function (error) {
             console.log(error);
+        });
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // Certificate input loading --> Via new FileReader API (still under development)
+        //////////////////////////////////////////////////////////////////////////////////
+        var certificate = null;
+
+        $(document).ready(function () {
+            $('#certificate').on('change', function (e) {
+                var file = e.target.files[0];
+                if (!file) { return; }
+
+                // New file reader instance
+                var reader = new FileReader();
+
+                // What to do if file is loaded
+                reader.onload = function (e) {
+                    var contents = e.target.result;
+                    certificate = contents;
+                };
+
+                // Now read file
+                reader.readAsText(file);
+            });
         });
 
         //////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +202,18 @@
             });
         });
 
-        // Login button
+        // Login Certificate button
+        $("#login-cert-form").on("submit", function (e) {
+            e.preventDefault();
+            j3a.LoginByPrivateKey($("#username").val(), certificate).then(function (result) {
+                window.location.href = j3a.GetBaseUrl(); // Now redirect to main page!
+            }, function (err) {
+                console.log(err);
+                $("#login-failed").show();
+            });
+        });
+
+        // Logout button
         $("#link-logout").click(function () {
             j3a.PartialLogout();
             window.location.href = j3a.GetBaseUrl();

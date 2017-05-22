@@ -76,7 +76,7 @@ Seed.prototype.ClearRecords = function () {
  * @param {string} database Database name
  * @returns {Promise}
  */
-Seed.ClearDatabase = function (database) {
+Seed.ClearDatabase = function () {
     var self = this;
 
     return new Promise(function (resolve, reject) {

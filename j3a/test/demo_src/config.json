@@ -1,7 +1,7 @@
 {
     "site-name": "J3A Demo",
-    "uri-base": "http://demo.localhost/test/demo",
-    "_uri-base": "https://praserx.github.io/j3a/demo",
+    "_uri-base": "http://demo.localhost/test/demo",
+    "uri-base": "https://praserx.github.io/j3a/demo",
     "uri-boot": "security/boot.script.html",
     "uri-acl": "security/acl.json",
     "uri-roles": "security/roles.json",

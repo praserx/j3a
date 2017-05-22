@@ -78,13 +78,12 @@
             </div>
          </div>
       </footer>
-       
+       <!--
     <script src="http://demo.localhost/build/j3a.js"></script>
-    
-    
-    <!--
-    <script src="https://praserx.github.io/j3a/demo/js/j3a.js"></script>
     -->
+    
+    <script src="https://praserx.github.io/j3a/demo/js/j3a.js"></script>
+    
     <script type="text/javascript">
         //////////////////////////////////////////////////////////////////////////////////
         // Handle page dynamic changes (quick action!)
@@ -97,6 +96,7 @@
                 // We can show some links or something (it can depends by user role too)
 
                 // Do not show login form if user is logged in - show his username!
+                /*
                 var logPage = window.localStorage.getItem('loginPage');
                 if (logPage == "true") {
                     window.localStorage.removeItem('loginPage');
@@ -105,6 +105,7 @@
                     var contentInner = '<div id="content" class="center-align contact-page">Prihlaseny uzivatel: '+ window.localStorage.getItem('user_username') +'<div class="line"></div></div>';
                     $("#login-section").html(contentHeader + contentInner);
                 }
+                */
             }
         });
 
@@ -113,15 +114,15 @@
         //////////////////////////////////////////////////////////////////////////////////
 
         // J3A config url
-        var configUrl = "http://demo.localhost/test/demo/config.json";    // localhost
-        //var configUrl = "https://praserx.github.io/j3a/demo/config.json";
+        //var configUrl = "http://demo.localhost/test/demo/config.json";    // localhost
+        var configUrl = "https://praserx.github.io/j3a/demo/config.json";
         
         // JA3 stuff
-        j3a = new J3A(true);    // New J3A
-        j3a.EnableDevMode();    // Enable developer mode
+        j3a = new J3A();        // New J3A
+        //j3a.EnableDevMode();    // Enable developer mode
 
         // Run initialization
-        j3a.Init(configUrl).then(function () {
+        j3a.Init(configUrl, "jtademo").then(function () {
             $(document).ready(function () {
                 // Run J3A page postprocessing
                 j3a.RunPostProcessing().then(function (result) {

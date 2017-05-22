@@ -66,11 +66,11 @@ Core.prototype.seed = null;
 Core.prototype.worker = null;
 
 Core.prototype.devMode = false;
+Core.prototype.prefix = null;
 
 //Core.prototype.ready = false;
 //Core.prototype.done = false;
-
-Core.prototype.database = "jtadb";
+//Core.prototype.database = "jtadb";
 
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -81,27 +81,29 @@ Core.prototype.database = "jtadb";
  * @description Initialization of Core class (loads config and acl)
  * @param {string} uriConfig URL of main configuration file
  */
-Core.prototype.Init = function (uriConfig, newVersion = false) {
+Core.prototype.Init = function (uriConfig, prefix = "") {
     var self = this;
+    
+    this.prefix = prefix + "_";
     
     return new Promise(function (resolve, reject) {
         if (self.devMode) {
             console.log("[CORE] Starting initialization");
         }
 
-        var config = window.localStorage.getItem('config');
-        var acl = window.localStorage.getItem('acl');
-        var roles = window.localStorage.getItem('roles');
-        var version = window.localStorage.getItem('version');
+        var config = window.localStorage.getItem(self.prefix + 'config');
+        var acl = window.localStorage.getItem(self.prefix + 'acl');
+        var roles = window.localStorage.getItem(self.prefix + 'roles');
+        var version = window.localStorage.getItem(self.prefix + 'version');
         
         self.crypter = new Crypter();
         self.worker = new Worker();
-        self.seed = new Seed(self.database);
+        self.seed = new Seed();
         
         // Disallow jQuery cache --> it producing too many... errors
         jQuery.ajaxSetup({ cache: false });
 
-        if ((config == null) || (acl == null) || (roles == null) || (self.devMode == true) || (newVersion == true)) {
+        if ((config == null) || (acl == null) || (roles == null) || (self.devMode == true)) {
             // Download config.json and acl.json
             if (self.devMode) {
                 console.log("[CORE] Downloading config.json, acl.json and roles.json from site");
@@ -159,10 +161,10 @@ Core.prototype.Init = function (uriConfig, newVersion = false) {
                 jQuery.when(jqxhrAcl, jqxhrRoles, jqxhrVersion).done(function () {
                     // If cache is allowed, then add config and acl to cache
                     if (self.config.allowCache == "true") {
-                        window.localStorage.setItem('version', self.version);
-                        window.localStorage.setItem('config', JSON.stringify(config));
-                        window.localStorage.setItem('acl', JSON.stringify(acl));
-                        window.localStorage.setItem('roles', JSON.stringify(roles));
+                        window.localStorage.setItem(self.prefix + 'version', self.version);
+                        window.localStorage.setItem(self.prefix + 'config', JSON.stringify(config));
+                        window.localStorage.setItem(self.prefix + 'acl', JSON.stringify(acl));
+                        window.localStorage.setItem(self.prefix + 'roles', JSON.stringify(roles));
                     }
 
                     // Provide auto logout
@@ -555,7 +557,7 @@ Core.prototype.LoginByPrivateKey = function (username, certificate, sli) {
  */
 Core.prototype.Logout = function () {
     this.ClearCredentials();
-    Seed.ClearDatabase(this.database);
+    Seed.ClearDatabase();
 }
 
 /**
@@ -583,7 +585,7 @@ Core.prototype.AutoLogout = function () {
 
             if (c.indexOf("logoutToken=") == 0) {
                 // If cookie value is not same as value in localStorage, then it's probably injected cookie, so logout.
-                if (c.substring("logoutToken=".length, c.length) != window.localStorage.getItem('user_logoutToken')) {
+                if (c.substring("logoutToken=".length, c.length) != window.localStorage.getItem(self.prefix + 'user_logoutToken')) {
                     this.PartialLogout();
                 } else {
                     cookieFound = true;
@@ -603,8 +605,8 @@ Core.prototype.AutoLogout = function () {
  * @returns {Array}
  */
 Core.prototype.GetUser = function () {
-    var username = window.localStorage.getItem('user_username');
-    var roles = JSON.parse(window.localStorage.getItem('user_roles'));
+    var username = window.localStorage.getItem(self.prefix + 'user_username');
+    var roles = JSON.parse(window.localStorage.getItem(self.prefix + 'user_roles'));
 
     if (username == null) {
         return null;
@@ -618,7 +620,7 @@ Core.prototype.GetUser = function () {
  * @returns {boolen}
  */
 Core.Logged = function () {
-    var username = window.localStorage.getItem('user_username');
+    var username = window.localStorage.getItem(self.prefix + 'user_username');
 
     if (username == null) {
         return false;
@@ -633,7 +635,7 @@ Core.Logged = function () {
  * @returns {boolean}
  */
 Core.InRole = function (roleName) {
-    var roles = window.localStorage.getItem('user_roles');
+    var roles = window.localStorage.getItem(self.prefix + 'user_roles');
 
     if (roles == null) {
         return false;
@@ -720,14 +722,12 @@ Core.prototype.GetBaseUrl = function () {
 Core.prototype.SaveCredentials = function (username, roles, logoutToken) {
     var self = this;
     
-    window.localStorage.setItem('user_username', username);
-    window.localStorage.setItem('user_roles', JSON.stringify(roles));
-    window.localStorage.setItem('user_logoutToken', logoutToken);
-
-    console.log(location.hostname);
+    window.localStorage.setItem(self.prefix + 'user_username', username);
+    window.localStorage.setItem(self.prefix + 'user_roles', JSON.stringify(roles));
+    window.localStorage.setItem(self.prefix + 'user_logoutToken', logoutToken);
 
     if (self.config.autoLogout == "true") {
-        document.cookie = "logoutToken=" + logoutToken;
+        document.cookie = self.prefix + "logoutToken=" + logoutToken;
     }
 }
 
@@ -735,11 +735,11 @@ Core.prototype.SaveCredentials = function (username, roles, logoutToken) {
  * @description Removes all credentials in local storage
  */
 Core.prototype.ClearCredentials = function () {
-    window.localStorage.removeItem('user_username');
-    window.localStorage.removeItem('user_roles');
-    window.localStorage.removeItem('user_logoutToken');
+    window.localStorage.removeItem(self.prefix + 'user_username');
+    window.localStorage.removeItem(self.prefix + 'user_roles');
+    window.localStorage.removeItem(self.prefix + 'user_logoutToken');
 
-    document.cookie = "logoutToken=";
+    document.cookie = self.prefix + "logoutToken=";
 }
 
 /**

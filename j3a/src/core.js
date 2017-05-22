@@ -624,13 +624,12 @@ Core.prototype.GetUser = function () {
 }
 
 /**
- * @description Returns true if someone is logged in, otherwise returns false (fast inline function)
+ * @description [static] Returns true if someone is logged in, otherwise returns false (fast inline function)
+ * @param {string} prefix Prefix which is used for initialization
  * @returns {boolen}
  */
-Core.Logged = function () {
-    var self = this;
-
-    var username = window.localStorage.getItem(this.prefix + 'user_username');
+Core.Logged = function (prefix = "") {
+    var username = window.localStorage.getItem(prefix + '_' + 'user_username');
 
     if (username == null) {
         return false;
@@ -640,14 +639,13 @@ Core.Logged = function () {
 }
 
 /**
- * @description Returns true if user has specified role, otherwire returns false (fast inline function)
+ * @description [static] Returns true if user has specified role, otherwire returns false (fast inline function)7
+ * @param {string} prefix Prefix which is used for initialization
  * @param {string} roleName
  * @returns {boolean}
  */
-Core.InRole = function (roleName) {
-    var self = this;
-
-    var roles = window.localStorage.getItem(this.prefix + 'user_roles');
+Core.InRole = function (prefix = "", roleName) {
+    var roles = window.localStorage.getItem(prefix + '_' + 'user_roles');
 
     if (roles == null) {
         return false;

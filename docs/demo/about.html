@@ -10,7 +10,7 @@
 		<link rel="stylesheet" href="./css/materialize.min.css">
 		<link rel="stylesheet" href="./css/custom.css">
 		
-		<title>Login - J3A</title>
+		<title>About - J3A</title>
 	</head>
 
 	<body>
@@ -28,8 +28,8 @@
 						<div class="menu hide-on-small-only">
 							<ul class="links left">
 								<li><a href="./index.html">Main</a></li>
-								<li><a href="./about.html">About</a></li>
-								<li><a id="link-login" class="active" href="./login.html">Login</a></li>
+								<li><a class="active" href="./about.html">About</a></li>
+								<li><a id="link-login" href="./login.html">Login</a></li>
 								<li><a id="link-logout" style="display: none" href="#">Logout</a></li>
 							</ul>
 							<ul class="brands right">
@@ -41,8 +41,8 @@
 							<div class="small">
 								<ul class="links">
 									<li><a href="./index.html">Main</a></li>
-									<li><a href="./about.html">About</a></li>
-									<li><a id="link-login" class="active" href="./login.html">Login</a></li>
+									<li><a class="active" href="./about.html">About</a></li>
+									<li><a id="link-login" href="./login.html">Login</a></li>
 									<li><a id="link-logout" style="display: none" href="#">Logout</a></li>
 								</ul>
 								<ul class="brands">
@@ -55,33 +55,61 @@
 				<div class="row">
 					<div class="col s12 xl10 offset-xl1">
 						<div class="content">
-							<div class="row" style="margin-top: 20px;">
-								<form id="login-form" class="col s6 offset-s3" action="">
-									<div class="row" id="login-failed" style="display: none; padding: 10px 15px; margin-bottom:15px; background-color: #f2dede; color: #000;">
-										<div class="col s12">
-											<p>Login failed!</p>
+							<h2>About</h2>
+							<p>This page is all about demo. You can try this features here. Below you have users with passwords.</p>
+							
+							<a href="./page/registered.html">Page only for users with role Registered</a><br>
+							<a href="./page/author.html">Page only for users with role Author</a>
+							
+							<h3>Accounts</h3>
+							<table class="striped">
+								<thead>
+									<tr>
+										<th>Username</th>
+										<th>Password/Certificate</th>
+										<th>Role</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td>bob</td>
+										<td>bob</td>
+										<td>Registered</td>
+							 		</tr>
+									<tr>
+										<td>jimbo</td>
+										<td>jimbo</td>
+										<td>Author</td>
+							 		</tr>
+									<tr>
+										<td>admin</td>
+										<td>admin</td>
+										<td>Administrator</td>
+							 		</tr>
+									<tr>
+										<td>mike</td>
+										<td>security/users/publickeys/mike_private.pem</td>
+										<td>Registered</td>
+							 		</tr>
+								</tbody>
+							</table>
+							
+							<p><i>-- Administrator inherits access rights from Registered and Author.</i></p>
+							
+							<h3>Author</h3>
+							<div class="row">
+								<div class="col s12 m10 l8">
+									<div class="row valign-wrapper">
+										<div class="col s2">
+											<img src="./img/photo.png" alt="" class="circle responsive-img">
+										</div>
+										<div class="col s10">
+											<span class="black-text">Praser</span><br/>
+											<span><a href="https://github.com/PraserX">https://github.com/PraserX</a></span>
 										</div>
 									</div>
-									<div class="row">
-										<div class="input-field col s12">
-											<input id="username" type="text" class="validate">
-											<label for="username">Username</label>
-										</div>
-									</div>
-									<div class="row">
-										<div class="input-field col s12">
-											<input id="password" type="password" class="validate">
-											<label for="password">Password</label>
-										</div>
-									</div>
-									<div class="row">
-										<div class="col s12">
-											<button id="login-button" type="submit" class="contentButton"><span>Login</span></button>
-											<span style="margin-left: 15px;"><a href="./login-cert.html">or login via certificate</a></span>
-										</div>
-									</div>
-								</form>
-							</div>	
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

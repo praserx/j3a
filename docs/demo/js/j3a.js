@@ -1101,21 +1101,26 @@ Core.prototype.GetResources = function (rolesCryptoKeys) {
         self.DecryptRoles(rolesCryptoKeys, 0).then(function (aclCryptoKeys) {
             // Decrypt acl
             self.DecryptAclResources(aclCryptoKeys, 0).then(function (resourcesCryptoKeys) {
-                var dlResourcesCryptoKeys = self.RemoveDuplicateResources(resourcesCryptoKeys);
-                var dlResourcesIds = self.ExtractIds(dlResourcesCryptoKeys);
+                // No resources on page found
+                if (resourcesCryptoKeys.length == 0) {
+                    resolve("success");
+                } else {
+                    var dlResourcesCryptoKeys = self.RemoveDuplicateResources(resourcesCryptoKeys);
+                    var dlResourcesIds = self.ExtractIds(dlResourcesCryptoKeys);
 
-                // Download resources
-                self.DownloadResources(dlResourcesIds).then(function (encryptedResources) {
-                    // Decrypt resources
-                    self.DecryptResources(dlResourcesCryptoKeys, encryptedResources).then(function (decryptedElements) {
-                        self.seed.Insert(decryptedElements);
-                        resolve("success");
+                    // Download resources
+                    self.DownloadResources(dlResourcesIds).then(function (encryptedResources) {
+                        // Decrypt resources
+                        self.DecryptResources(dlResourcesCryptoKeys, encryptedResources).then(function (decryptedElements) {
+                            self.seed.Insert(decryptedElements);
+                            resolve("success");
+                        }).catch(function (error) {
+                            reject(error);
+                        });
                     }).catch(function (error) {
                         reject(error);
                     });
-                }).catch(function (error) {
-                    reject(error);
-                });
+                }
             }).catch(function (error) {
                 reject(error);
             });
@@ -1182,6 +1187,12 @@ Core.prototype.DecryptAclResources = function (aclCryptoKeys) {
     var self = this;
 
     return new Promise(function (resolve, reject) {
+
+        // ACK 0-fix
+        if (aclCryptoKeys.length == 0) {
+            resolve([]);
+        }
+
         // Get encrypted keys of ACL resources
         var secret = self.acl.GetAclResourceSecretById(aclCryptoKeys[index].resource_id);
 

@@ -1,5 +1,8 @@
 *.njsproj
 *.sln
+WebEssentials2015-Settings.json
+WE-Palette.css
 .vs/*
 node_modules/*
 typings/*
+obj/*

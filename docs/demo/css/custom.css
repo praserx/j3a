@@ -43,6 +43,10 @@ main .menu .small ul { text-align:  center; }
 main .menu .small ul li { display: block; margin: 0px; }
 main .menu .small ul a { display: inherit; }
 
+main .menu ul.brands li.user { display: inline-block; display: none; margin: 0px 20px; }
+main .menu ul.brands li.user #showname { color: #FCFCFC; font-style: italic; }
+main .menu ul.brands li.user #showname-sm { color: #FCFCFC; font-style: italic; }
+
 
 main .content {
 	background-color: #FCFCFC;

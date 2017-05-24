@@ -42,8 +42,9 @@ var Roles = require('./roles.js');
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description asdfas fasdf asdfasdf
- * @property {Acl} acl asdfasdf
+ * @class
+ * @classdesc Core class
+ * @property {Acl} acl
  * @property {Config} config asdfasd fasdf
  */
 function Core() {

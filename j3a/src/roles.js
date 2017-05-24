@@ -5,7 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Some description...
+ * @class
+ * @classdesc Roles class
  * @property {Array} roles
  */
 function Roles() {

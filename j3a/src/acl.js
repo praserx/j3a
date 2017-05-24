@@ -5,7 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Some description...
+ * @class
+ * @classdesc Access control list class
  */
 function Acl() {
 };

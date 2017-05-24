@@ -5,7 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Config class
+ * @class
+ * @classdesc Config class
  */
 function Config() {};
 

@@ -33,6 +33,7 @@
 								<li><a id="link-logout" style="display: none" href="#">Logout</a></li>
 							</ul>
 							<ul class="brands right">
+								<li class="user"><p id="showname"></p></li>
 								<li><a href="https://github.com/PraserX/j3a" target="_blank"><i class="fa fa-github"></i></a></li>
 							</ul>
 							<div style="clear: both;"></div>
@@ -42,10 +43,11 @@
 								<ul class="links">
 									<li><a href="./index.html">Main</a></li>
 									<li><a class="active" href="./about.html">About</a></li>
-									<li><a id="link-login" href="./login.html">Login</a></li>
-									<li><a id="link-logout" style="display: none" href="#">Logout</a></li>
+									<li><a id="link-login-sm" href="./login.html">Login</a></li>
+									<li><a id="link-logout-sm" style="display: none" href="#">Logout</a></li>
 								</ul>
 								<ul class="brands">
+									<li class="user"><p id="showname-sm"></p></li>
 									<li><a href="https://github.com/PraserX/j3a" target="_blank"><i class="fa fa-github"></i></a></li>
 								</ul>
 							</div>
@@ -168,9 +170,21 @@
             if (J3A.Logged(prefix) == true) {
                 $("#link-login").hide();
                 $("#link-logout").show();
+				
+				$("#link-login-sm").hide();
+                $("#link-logout-sm").show();
             }
         });
-
+		
+		$(document).ready(function () {
+            if (J3A.Logged(prefix) == true) {
+				$("#showname").text(j3a.GetUser().username);
+				$("#showname-sm").text(j3a.GetUser().username);
+				$(".user").each(function( i ) {
+					this.style.display = "inline-block";
+				});
+            }
+        });
         
         //////////////////////////////////////////////////////////////////////////////////
         // Certificate input loading --> Via new FileReader API (still under development)
@@ -224,6 +238,12 @@
 
         // Logout button
         $("#link-logout").click(function () {
+            j3a.PartialLogout();
+            window.location.href = j3a.GetBaseUrl();
+        });
+		
+		// Logout-sm button
+        $("#link-logout-sm").click(function () {
             j3a.PartialLogout();
             window.location.href = j3a.GetBaseUrl();
         });

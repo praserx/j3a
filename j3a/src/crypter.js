@@ -14,7 +14,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Some description...
+ * @class
+ * @classdesc Crypter class
  */
 function Crypter() {
     this.crypto = window.crypto || window.msCrypto; // for IE 11

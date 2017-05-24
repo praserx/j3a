@@ -62,9 +62,21 @@
             if (J3A.Logged(prefix) == true) {
                 $("#link-login").hide();
                 $("#link-logout").show();
+				
+				$("#link-login-sm").hide();
+                $("#link-logout-sm").show();
             }
         });
-
+		
+		$(document).ready(function () {
+            if (J3A.Logged(prefix) == true) {
+				$("#showname").text(j3a.GetUser().username);
+				$("#showname-sm").text(j3a.GetUser().username);
+				$(".user").each(function( i ) {
+					this.style.display = "inline-block";
+				});
+            }
+        });
         
         //////////////////////////////////////////////////////////////////////////////////
         // Certificate input loading --> Via new FileReader API (still under development)
@@ -118,6 +130,12 @@
 
         // Logout button
         $("#link-logout").click(function () {
+            j3a.PartialLogout();
+            window.location.href = j3a.GetBaseUrl();
+        });
+		
+		// Logout-sm button
+        $("#link-logout-sm").click(function () {
             j3a.PartialLogout();
             window.location.href = j3a.GetBaseUrl();
         });

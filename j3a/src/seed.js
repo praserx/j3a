@@ -14,7 +14,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Site Encrypted Elements Database
+ * @class
+ * @classdesc Site Encrypted Elements Database
  */
 function Seed(prefix) {
     this.prefix = prefix;

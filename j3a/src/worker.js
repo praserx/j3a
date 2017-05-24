@@ -5,7 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Worker class processing DOM elements
+ * @class
+ * @classdesc Worker class processing DOM elements
  */
 function Worker() {
    

@@ -96,15 +96,20 @@ Core.prototype.Init = function (uriConfig, newVersion = false, prefix = "") {
         var acl = window.localStorage.getItem(self.prefix + 'acl');
         var roles = window.localStorage.getItem(self.prefix + 'roles');
         var version = window.localStorage.getItem(self.prefix + 'version');
-        
+
         self.crypter = new Crypter();
         self.worker = new Worker();
         self.seed = new Seed(self.prefix);
+        self.version = version;
         
         // Disallow jQuery cache --> it producing too many... errors
         jQuery.ajaxSetup({ cache: false });
 
         if ((config == null) || (acl == null) || (roles == null) || (self.devMode == true) || (newVersion == true)) {
+            if (newVersion == true) {
+
+            }
+
             // Download config.json and acl.json
             if (self.devMode) {
                 console.log("[CORE] Downloading config.json, acl.json and roles.json from site");
@@ -125,8 +130,18 @@ Core.prototype.Init = function (uriConfig, newVersion = false, prefix = "") {
             // Download acl.json and roles.json after cofign download is complete
             jqxhrConfig.done(function () {
 
+                var refreshRequest = false;
+
+                // Version
                 var jqxhrVersion = jQuery.getJSON(self.config.GetUriVersion(), function (response) {
                     version = response;
+
+                    // Check version and if versions are now equal then logout
+                    if (self.version != version["page-version"]) {
+                        self.PartialLogout();
+                        refreshRequest = true;
+                    }
+
                     self.version = version["page-version"];
                 }).fail(function (error) {
                     if (self.devMode) {
@@ -135,7 +150,7 @@ Core.prototype.Init = function (uriConfig, newVersion = false, prefix = "") {
                     reject(error);
                 });
 
-
+                // Acl
                 var jqxhrAcl = jQuery.getJSON(self.config.GetUriAcl(), function (response) {
                     acl = response;
                     self.acl = new Acl();
@@ -147,6 +162,7 @@ Core.prototype.Init = function (uriConfig, newVersion = false, prefix = "") {
                     reject(error);
                 });
 
+                // Roles
                 var jqxhrRoles = jQuery.getJSON(self.config.GetUriRoles(), function (response) {
                     roles = response;
                     self.roles = new Roles();
@@ -166,11 +182,17 @@ Core.prototype.Init = function (uriConfig, newVersion = false, prefix = "") {
                         window.localStorage.setItem(self.prefix + 'config', JSON.stringify(config));
                         window.localStorage.setItem(self.prefix + 'acl', JSON.stringify(acl));
                         window.localStorage.setItem(self.prefix + 'roles', JSON.stringify(roles));
+                    } else {
+                        window.localStorage.setItem(self.prefix + 'version', self.version);
                     }
 
                     // Provide auto logout
                     //self.AutoLogout();
-                    
+
+                    if (refreshRequest == true) {
+                        window.location.href = self.config.GetUriBase(); // Then refresh page
+                    }
+
                     resolve("complete");
                 });
             });

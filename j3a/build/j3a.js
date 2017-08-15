@@ -6,7 +6,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Some description...
+ * @class
+ * @classdesc Access control list class
  */
 
 function Acl() {};
@@ -75,7 +76,8 @@ module.exports = Acl;
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Config class
+ * @class
+ * @classdesc Config class
  */
 
 function Config() {};
@@ -369,8 +371,9 @@ var Roles = require('./roles.js');
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description asdfas fasdf asdfasdf
- * @property {Acl} acl asdfasdf
+ * @class
+ * @classdesc Core class
+ * @property {Acl} acl
  * @property {Config} config asdfasd fasdf
  */
 function Core() {
@@ -428,11 +431,14 @@ Core.prototype.Init = function (uriConfig) {
         self.crypter = new Crypter();
         self.worker = new Worker();
         self.seed = new Seed(self.prefix);
+        self.version = version;
 
         // Disallow jQuery cache --> it producing too many... errors
         jQuery.ajaxSetup({ cache: false });
 
         if (config == null || acl == null || roles == null || self.devMode == true || newVersion == true) {
+            if (newVersion == true) {}
+
             // Download config.json and acl.json
             if (self.devMode) {
                 console.log("[CORE] Downloading config.json, acl.json and roles.json from site");
@@ -453,8 +459,18 @@ Core.prototype.Init = function (uriConfig) {
             // Download acl.json and roles.json after cofign download is complete
             jqxhrConfig.done(function () {
 
+                var refreshRequest = false;
+
+                // Version
                 var jqxhrVersion = jQuery.getJSON(self.config.GetUriVersion(), function (response) {
                     version = response;
+
+                    // Check version and if versions are now equal then logout
+                    if (self.version != version["page-version"]) {
+                        self.PartialLogout();
+                        refreshRequest = true;
+                    }
+
                     self.version = version["page-version"];
                 }).fail(function (error) {
                     if (self.devMode) {
@@ -463,6 +479,7 @@ Core.prototype.Init = function (uriConfig) {
                     reject(error);
                 });
 
+                // Acl
                 var jqxhrAcl = jQuery.getJSON(self.config.GetUriAcl(), function (response) {
                     acl = response;
                     self.acl = new Acl();
@@ -474,6 +491,7 @@ Core.prototype.Init = function (uriConfig) {
                     reject(error);
                 });
 
+                // Roles
                 var jqxhrRoles = jQuery.getJSON(self.config.GetUriRoles(), function (response) {
                     roles = response;
                     self.roles = new Roles();
@@ -493,10 +511,16 @@ Core.prototype.Init = function (uriConfig) {
                         window.localStorage.setItem(self.prefix + 'config', JSON.stringify(config));
                         window.localStorage.setItem(self.prefix + 'acl', JSON.stringify(acl));
                         window.localStorage.setItem(self.prefix + 'roles', JSON.stringify(roles));
+                    } else {
+                        window.localStorage.setItem(self.prefix + 'version', self.version);
                     }
 
                     // Provide auto logout
                     //self.AutoLogout();
+
+                    if (refreshRequest == true) {
+                        window.location.href = self.config.GetUriBase(); // Then refresh page
+                    }
 
                     resolve("complete");
                 });
@@ -1410,7 +1434,8 @@ module.exports = Core;
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Some description...
+ * @class
+ * @classdesc Crypter class
  */
 
 function Crypter() {
@@ -1839,7 +1864,8 @@ module.exports = Crypter;
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Some description...
+ * @class
+ * @classdesc Roles class
  * @property {Array} roles
  */
 
@@ -1933,7 +1959,8 @@ module.exports = Roles;
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Site Encrypted Elements Database
+ * @class
+ * @classdesc Site Encrypted Elements Database
  */
 
 function Seed(prefix) {
@@ -2116,7 +2143,8 @@ Seed.ClearDatabase = function (database) {
 ///////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @description Worker class processing DOM elements
+ * @class
+ * @classdesc Worker class processing DOM elements
  */
 
 function Worker() {}
